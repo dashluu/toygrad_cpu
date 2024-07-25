@@ -115,6 +115,7 @@ namespace Toygrad::Tensor {
     }
 
     Tensor &Tensor::at(const std::vector<Range> &ranges) {
+        assert(str_assert(shape.getNumDims() >= ranges.size(), AssertMessage::indexMultipleDimsOnly));
         TensorIndexer indexer(this);
         return *indexer.at(ranges);
     }
@@ -435,6 +436,23 @@ namespace Toygrad::Tensor {
         auto outOp = new ReluOp(op, outTensor);
         outOp->forward();
         Graph::addOp(outOp);
+        return *outTensor;
+    }
+
+    Tensor &Tensor::reshape(const Shape &shape) {
+        assert(str_assert(shape.getSize() == this->shape.getSize(), AssertMessage::shapesMismatched));
+        Tensor *outTensor;
+
+        if (isContiguous()) {
+            outTensor = new Tensor(shape, vec);
+            outTensor->shape.offset = this->shape.offset;
+        } else {
+            outTensor = new Tensor(shape);
+            auto outOp = new CopyOp(op, outTensor);
+            outOp->forward();
+            Graph::addOp(outOp);
+        }
+
         return *outTensor;
     }
 

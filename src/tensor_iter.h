@@ -76,7 +76,8 @@ namespace Toygrad::Tensor {
         }
 
         bool hasNext() override {
-            return counter < tensor->getShape().getSize();
+            return counter < tensor->getShape().getSize() &&
+                   elmIdx < tensor->getShape().root->offset + tensor->getShape().root->getSize();
         }
 
         void next() override;

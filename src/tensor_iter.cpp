@@ -7,7 +7,8 @@
 namespace Toygrad::Tensor {
     void SparseIter::next() {
         auto &shape = tensor->getShape();
-        auto &strides = shape.dst;
+        auto &dst = shape.dst;
+        auto &sst = shape.sst;
         bool flag = false;
 
         while (nIdx > 0 && !flag) {
@@ -17,7 +18,8 @@ namespace Toygrad::Tensor {
                 tmp += shape.rng[i].beg * shape.root->dst[i];
             }
 
-            flag = offset + (nIndices[nIdx] + 1) * strides[nIdx] < tmp + shape.root->dst[nIdx - 1];
+            flag = nIndices[nIdx] + 1 < sst[nIdx - 1] &&
+                   offset + (nIndices[nIdx] + 1) * dst[nIdx] < tmp + shape.root->dst[nIdx - 1];
 
             if (!flag) {
                 nIdx--;

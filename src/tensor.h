@@ -161,6 +161,8 @@ namespace Toygrad::Tensor {
 
         Tensor &relu();
 
+        Tensor &reshape(const Shape &shape);
+
         Tensor &sum();
 
         void backward();

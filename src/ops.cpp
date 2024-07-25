@@ -309,4 +309,15 @@ namespace Toygrad::Tensor {
             *operand->grad += *grad * (*operand->tensor > 0.);
         }
     }
+
+    void CopyOp::forward() {
+        std::unique_ptr<Iter> resultIter = initIter(tensor);
+        std::unique_ptr<Iter> operandIter = initIter(operand->tensor);
+
+        for (resultIter->start(), operandIter->start();
+             resultIter->hasNext();
+             resultIter->next(), operandIter->next()) {
+            resultIter->curr() = operandIter->curr();
+        }
+    }
 }

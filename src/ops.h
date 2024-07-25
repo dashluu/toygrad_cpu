@@ -17,7 +17,8 @@ namespace Toygrad::Tensor {
         ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN,
         ADD, SUB, MUL, DIV, EXP,
         EQ, NEQ, LESS, GREATER, LEQ, GEQ,
-        RELU, SUM
+        RELU, SUM,
+        COPY
     };
 
     struct Op {
@@ -252,5 +253,12 @@ namespace Toygrad::Tensor {
         void forward() override;
 
         void backward() override;
+    };
+
+    struct CopyOp final : UnOp {
+        CopyOp(Op *operand, Tensor *tensor): UnOp(OpName::COPY, operand, tensor) {
+        }
+
+        void forward() override;
     };
 }
