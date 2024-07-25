@@ -7,7 +7,7 @@
 namespace Toygrad::Tensor {
     class Tensor final {
         Shape shape;
-        Vec *vec = nullptr;
+        std::shared_ptr<Vec> vec = nullptr;
         static size_t idCounter;
         size_t id;
         Op *op = nullptr;
@@ -42,14 +42,14 @@ namespace Toygrad::Tensor {
 
         explicit Tensor(const Shape &shape);
 
-        Tensor(const Shape &shape, Vec *vec);
+        Tensor(const Shape &shape, std::shared_ptr<Vec> vec);
 
         Tensor *atHelper(const std::vector<size_t> &idx);
 
     public:
         Tensor(const Tensor &tensor);
 
-        ~Tensor();
+        ~Tensor() = default;
 
         size_t getId() const {
             return id;
@@ -61,7 +61,7 @@ namespace Toygrad::Tensor {
 
         inline Tensor &getGrad() const;
 
-        const Vec *getVec() const {
+        std::shared_ptr<const Vec> getVec() const {
             return vec;
         }
 

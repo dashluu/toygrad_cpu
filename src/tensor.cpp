@@ -1,4 +1,5 @@
 #include <iostream>
+#include <utility>
 
 #include "tensor.h"
 #include "ops.h"
@@ -15,28 +16,17 @@ namespace Toygrad::Tensor {
 
     Tensor::Tensor(const Shape &shape) : Tensor() {
         this->shape = shape;
-        vec = new Vec(shape.getSize());
-        vec->refCount++;
+        vec = std::make_shared<Vec>(shape.getSize());
     }
 
-    Tensor::Tensor(const Shape &shape, Vec *vec): Tensor() {
+    Tensor::Tensor(const Shape &shape, std::shared_ptr<Vec> vec): Tensor() {
         this->shape = shape;
-        this->vec = vec;
-        vec->refCount++;
+        this->vec = std::move(vec);
     }
 
     Tensor::Tensor(const Tensor &tensor): Tensor() {
         shape = tensor.shape;
         vec = tensor.vec;
-        vec->refCount++;
-    }
-
-    Tensor::~Tensor() {
-        if (vec->refCount > 1) {
-            vec->refCount--;
-        } else {
-            delete vec;
-        }
     }
 
     Tensor &Tensor::getGrad() const {
@@ -340,15 +330,7 @@ namespace Toygrad::Tensor {
         }
 
         assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-
-        if (vec->refCount > 1) {
-            vec->refCount--;
-        } else {
-            delete vec;
-        }
-
         vec = rhs.vec;
-        vec->refCount++;
         // Keep the edges the same
         // Do not copy op since that creates new unwanted edges
         return *this;

@@ -4,11 +4,6 @@
 
 namespace Toygrad::Tensor {
     struct Vec {
-    private:
-        size_t refCount = 0;
-        friend class Tensor;
-
-    public:
         size_t size;
         real *buff;
 
