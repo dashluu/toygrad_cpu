@@ -3,8 +3,6 @@
 #include "common.h"
 
 namespace Toygrad::Tensor {
-    class Tensor;
-
     struct Vec {
     private:
         size_t refCount = 0;

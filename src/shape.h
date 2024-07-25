@@ -4,55 +4,52 @@
 #include "common.h"
 
 namespace Toygrad::Tensor {
-    class Tensor;
-    class TensorIndexer;
-
     struct Shape {
     private:
         friend class Tensor;
         friend class TensorIndexer;
 
-        explicit Shape(size_t numDims) {
-            view.resize(numDims);
-            strides.resize(numDims);
-        }
-
         Shape() = default;
 
-        void initStrides() {
+        void initSt(std::vector<size_t> &st) {
             // Update strides
-            strides.resize(view.size());
+            st.resize(view.size());
             size_t stride = 1;
 
             for (int i = view.size() - 2; i >= 0; i--) {
                 stride *= view[i + 1];
-                strides[i] = stride;
+                st[i] = stride;
             }
 
-            strides[view.size() - 1] = 1;
+            st[view.size() - 1] = 1;
         }
 
-        void initRanges() {
+        void initRng() {
             for (size_t &i: view) {
-                ranges.push_back({0, i, 1});
+                rng.push_back({0, i, 1});
             }
         }
 
     public:
         Shape *root = nullptr;
-        std::vector<Range> ranges;
+        std::vector<Range> rng;
         size_t offset = 0;
         std::vector<size_t> view;
-        std::vector<size_t> strides;
+        // Dynamic strides
+        std::vector<size_t> dst;
+        // Static strides
+        std::vector<size_t> sst;
 
-        Shape(Shape *root, const std::vector<Range> &ranges, size_t offset,
-              const std::vector<size_t> &view): root(root), ranges(ranges), offset(offset), view(view) {
-            initStrides();
+        Shape(Shape *root, const std::vector<Range> &rng, size_t offset,
+              const std::vector<size_t> &view): root(root), rng(rng), offset(offset), view(view) {
+            initSt(dst);
+            sst = dst;
         }
 
         Shape(Shape *root, size_t offset, const std::vector<size_t> &view): root(root), offset(offset), view(view) {
-            initStrides();
-            initRanges();
+            initSt(dst);
+            sst = dst;
+            initRng();
         }
 
         Shape(size_t offset, const std::vector<size_t> &view): Shape(this, offset, view) {
@@ -63,10 +60,11 @@ namespace Toygrad::Tensor {
 
         Shape(const Shape &shape) {
             root = shape.root;
-            ranges = shape.ranges;
+            rng = shape.rng;
             offset = shape.offset;
             view = shape.view;
-            strides = shape.strides;
+            dst = shape.dst;
+            sst = shape.sst;
         }
 
         bool operator==(const Shape &rhs) const {
@@ -83,10 +81,11 @@ namespace Toygrad::Tensor {
             }
 
             root = rhs.root;
-            ranges = rhs.ranges;
+            rng = rhs.rng;
             offset = rhs.offset;
             view = rhs.view;
-            strides = rhs.strides;
+            dst = rhs.dst;
+            sst = rhs.sst;
             return *this;
         }
 

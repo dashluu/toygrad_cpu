@@ -44,12 +44,49 @@ namespace Toygrad::Tensor {
     }
 
     std::ostream &operator<<(std::ostream &stream, Tensor &tensor) {
-        stream << "[";
-        SparseIter iter(&tensor);
+        std::unique_ptr<Iter> iter = initIter(&tensor);
+        auto &sst = tensor.shape.sst;
+        iter->start();
+        bool flag = iter->hasNext();
 
-        for (iter.start(); iter.hasNext(); iter.next()) {
-            stream << iter.curr() << " ";
+        for (size_t i = 0; i < tensor.shape.getNumDims(); i++) {
+            stream << "[";
         }
+
+        if (!flag) {
+            for (size_t i = 0; i < tensor.shape.getNumDims(); i++) {
+                stream << "]";
+            }
+
+            return stream;
+        }
+
+        do {
+            stream << iter->curr();
+            size_t close = 0;
+
+            for (int i = sst.size() - 2; i >= 0; i--) {
+                if (iter->count() % sst[i] == 0) {
+                    stream << "]";
+                    close++;
+                }
+            }
+
+            iter->next();
+            flag = iter->hasNext();
+
+            if (flag) {
+                stream << ", ";
+
+                if (close > 0) {
+                    stream << std::endl;
+                }
+
+                for (size_t i = 0; i < close; i++) {
+                    stream << "[";
+                }
+            }
+        } while (flag);
 
         stream << "]";
         return stream;
@@ -68,7 +105,7 @@ namespace Toygrad::Tensor {
     }
 
     bool Tensor::isContiguous() const {
-        return std::ranges::all_of(shape.ranges.begin(), shape.ranges.end(),
+        return std::ranges::all_of(shape.rng.begin(), shape.rng.end(),
                                    [](const Range &range) { return range.step > 1; });
     }
 

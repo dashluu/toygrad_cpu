@@ -42,10 +42,6 @@ namespace Toygrad::Tensor {
         }
     }
 
-    void AssignOp::forward() {
-
-    }
-
     void SumOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
         std::unique_ptr<Iter> operandIter = initIter(operand->tensor);

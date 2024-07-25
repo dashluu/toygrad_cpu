@@ -7,17 +7,17 @@
 namespace Toygrad::Tensor {
     void SparseIter::next() {
         auto &shape = tensor->getShape();
-        auto &strides = shape.strides;
+        auto &strides = shape.dst;
         bool flag = false;
 
         while (nIdx > 0 && !flag) {
             auto tmp = shape.root->offset;
 
             for (size_t i = 0; i < nIdx; i++) {
-                tmp += shape.ranges[i].beg * shape.root->strides[i];
+                tmp += shape.rng[i].beg * shape.root->dst[i];
             }
 
-            flag = offset + (nIndices[nIdx] + 1) * strides[nIdx] < tmp + shape.root->strides[nIdx - 1];
+            flag = offset + (nIndices[nIdx] + 1) * strides[nIdx] < tmp + shape.root->dst[nIdx - 1];
 
             if (!flag) {
                 nIdx--;
@@ -32,7 +32,7 @@ namespace Toygrad::Tensor {
         }
 
         for (size_t i = 0; i < nIndices.size(); i++) {
-            elmIdx += nIndices[i] * tensor->getShape().strides[i];
+            elmIdx += nIndices[i] * tensor->getShape().dst[i];
         }
 
         nIdx = nIndices.size() - 1;

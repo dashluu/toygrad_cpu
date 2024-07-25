@@ -25,6 +25,8 @@ namespace Toygrad::Tensor {
         virtual void next() = 0;
 
         virtual real &curr() const = 0;
+
+        virtual size_t count() = 0;
     };
 
     class DenseIter : public Iter {
@@ -48,6 +50,10 @@ namespace Toygrad::Tensor {
 
         real &curr() const override {
             return (*tensor->getVec())[elmIdx];
+        }
+
+        size_t count() override {
+            return elmIdx + 1;
         }
     };
 
@@ -77,6 +83,10 @@ namespace Toygrad::Tensor {
 
         real &curr() const override {
             return (*tensor->getVec())[elmIdx];
+        }
+
+        size_t count() override {
+            return counter + 1;
         }
     };
 

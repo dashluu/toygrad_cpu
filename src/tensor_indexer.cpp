@@ -25,18 +25,19 @@ namespace Toygrad::Tensor {
         Shape shape;
         shape.offset = tensor->shape.offset;
         shape.root = &tensor->shape;
-        shape.ranges = ranges;
+        shape.rng = ranges;
 
         for (size_t i = 0; i < ranges.size(); i++) {
-            shape.offset += ranges[i].beg * tensor->shape.strides[i];
+            shape.offset += ranges[i].beg * tensor->shape.dst[i];
         }
 
         for (size_t i = 0; i < ranges.size(); i++) {
             size_t dim = ceil(static_cast<real>(ranges[i].end - ranges[i].beg) / ranges[i].step);
             shape.view.push_back(dim);
-            shape.strides.push_back(tensor->shape.strides[i] * ranges[i].step);
+            shape.dst.push_back(tensor->shape.dst[i] * ranges[i].step);
         }
 
+        shape.initSt(shape.sst);
         return new Tensor(shape, tensor->vec);
     }
 }
