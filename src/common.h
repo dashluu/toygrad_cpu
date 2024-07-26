@@ -13,6 +13,7 @@ namespace Toygrad::Tensor {
         size_t step;
     };
 
+    class CGraph;
     class TensorIter;
     class Tensor;
     class TensorIndexer;

@@ -4,6 +4,7 @@
 #include "ops.h"
 #include "tensor_indexer.h"
 #include "tensor_iter.h"
+#include "cgraph.h"
 
 namespace Toygrad::Tensor {
     size_t Tensor::idCounter = 0;
@@ -235,7 +236,7 @@ namespace Toygrad::Tensor {
         return eq(fromConst(shape, c));
     }
 
-    bool Tensor::operator==(Tensor &rhs) {
+    bool Tensor::operator==(const Tensor &rhs) const {
         if (shape != rhs.shape) {
             return false;
         }
@@ -264,7 +265,7 @@ namespace Toygrad::Tensor {
         return neq(fromConst(shape, c));
     }
 
-    bool Tensor::operator!=(Tensor &rhs) {
+    bool Tensor::operator!=(const Tensor &rhs) const {
         return !(*this == rhs);
     }
 
@@ -404,12 +405,15 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::sum() {
-        auto outTensor = std::make_shared<Tensor>(Shape());
+        auto outTensor = std::make_shared<Tensor>(Shape({1}));
         outTensor->op = new SumOp(shared_from_this(), outTensor.get());
         outTensor->op->forward();
         return outTensor;
     }
 
     void Tensor::backward() {
+        assert(str_assert(shape.getSize() == 1, AssertMessage::gradOnScalarOnly));
+        static CGraph graph;
+        graph.backprop(shared_from_this());
     }
 }

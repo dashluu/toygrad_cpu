@@ -73,6 +73,8 @@ namespace Toygrad::Tensor {
 
         ConstOp(Tensor *tensor, real c) : Op(OpType::LEAF, OpName::CONST, tensor), c(c) {
         }
+
+        void forward() override;
     };
 
     struct ArangeOp final : Op {

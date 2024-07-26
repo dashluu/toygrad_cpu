@@ -53,3 +53,21 @@ TEST(TensorTestFixture, indexTensor2) {
     // std::cout << *t2 << std::endl << std::endl;
     std::cout << *t3 << std::endl;
 }
+
+TEST(TensorTestFixture, sumTensor) {
+    std::cout << "Summing tensor:" << std::endl;
+    std::vector<size_t> v = {1, 2, 12};
+    Shape s1(v);
+    auto t1 = Tensor::arange(s1, 0, 1);
+    Shape s2({1});
+    real data[] = {276};
+    auto r2 = Tensor::fromArr(s2, data);
+    auto t2 = t1->sum();
+    ASSERT_EQ(*t2, *r2);
+    std::cout << *t1 << std::endl;
+    std::cout << *t2 << std::endl;
+    t2->backward();
+    auto g1 = Tensor::fromConst(s1, 1.);
+    ASSERT_EQ(*t1->getGrad(), *g1);
+    std::cout << *t1->getGrad() << std::endl << std::endl;
+}

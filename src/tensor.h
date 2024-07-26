@@ -14,6 +14,7 @@ namespace Toygrad::Tensor {
         TensorPtr grad;
         std::vector<Tensor *> edges = std::vector<Tensor *>();
 
+        friend class CGraph;
         friend struct Op;
         friend struct UnOp;
         friend struct BinOp;
@@ -128,13 +129,13 @@ namespace Toygrad::Tensor {
 
         TensorPtr eq(real c);
 
-        bool operator==(Tensor &rhs);
+        bool operator==(const Tensor &rhs) const;
 
         TensorPtr neq(const TensorPtr &rhs);
 
         TensorPtr neq(real c);
 
-        bool operator!=(Tensor &rhs);
+        bool operator!=(const Tensor &rhs) const;
 
         TensorPtr lt(const TensorPtr &rhs);
 

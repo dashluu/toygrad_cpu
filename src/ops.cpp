@@ -6,6 +6,14 @@
 #include "tensor_iter.h"
 
 namespace Toygrad::Tensor {
+    void ConstOp::forward() {
+        DenseIter iter(tensor);
+
+        for (iter.start(); iter.hasNext(); iter.next()) {
+            iter.curr() = c;
+        }
+    }
+
     void ArangeOp::forward() {
         DenseIter iter(tensor);
         size_t i = 0;
@@ -452,9 +460,7 @@ namespace Toygrad::Tensor {
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
-        for (outIter->start(), opIter->start();
-             outIter->hasNext();
-             outIter->next(), opIter->next()) {
+        for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
             outIter->curr() = opIter->curr();
         }
     }

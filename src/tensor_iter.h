@@ -9,10 +9,10 @@
 namespace Toygrad::Tensor {
     class TensorIter {
     protected:
-        Tensor *tensor;
+        const Tensor *tensor;
         size_t offset = 0;
 
-        explicit TensorIter(Tensor *tensor): tensor(tensor) {
+        explicit TensorIter(const Tensor *tensor): tensor(tensor) {
         }
 
     public:
@@ -33,7 +33,7 @@ namespace Toygrad::Tensor {
         size_t elmIdx = 0;
 
     public:
-        explicit DenseIter(Tensor *tensor): TensorIter(tensor) {
+        explicit DenseIter(const Tensor *tensor): TensorIter(tensor) {
         }
 
         void start() override {
@@ -64,7 +64,7 @@ namespace Toygrad::Tensor {
         size_t counter = 0;
 
     public:
-        explicit SparseIter(Tensor *tensor): TensorIter(tensor) {
+        explicit SparseIter(const Tensor *tensor): TensorIter(tensor) {
         }
 
         void start() override {
