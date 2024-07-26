@@ -5,14 +5,18 @@
 #include "str_assert.h"
 
 namespace Toygrad::Tensor {
-    class Tensor final {
+    class Tensor final : public std::enable_shared_from_this<Tensor> {
         Shape shape;
-        std::shared_ptr<Vec> vec = nullptr;
+        std::shared_ptr<Vec> vec;
         static size_t idCounter;
         size_t id;
         Op *op = nullptr;
+        TensorPtr grad;
+        std::vector<Tensor *> edges = std::vector<Tensor *>();
 
         friend struct Op;
+        friend struct UnOp;
+        friend struct BinOp;
         friend struct ConstOp;
         friend struct IndexOp;
         friend struct ArangeOp;
@@ -29,6 +33,9 @@ namespace Toygrad::Tensor {
         friend struct DivOp;
         friend struct DivAssignOp;
         friend struct ExpOp;
+        friend struct RecipOp;
+        friend struct NegOp;
+        friend struct SqOp;
         friend struct EqOp;
         friend struct NeqOp;
         friend struct LessOp;
@@ -40,16 +47,23 @@ namespace Toygrad::Tensor {
 
         Tensor();
 
+        TensorPtr atHelper(const std::vector<size_t> &idx);
+
+        void initGrad() {
+            if (grad == nullptr) {
+                grad = std::make_shared<Tensor>(shape);
+            }
+        }
+
+    public
+    :
         explicit Tensor(const Shape &shape);
 
-        Tensor(const Shape &shape, std::shared_ptr<Vec> vec);
+        Tensor(const Shape &shape, const std::shared_ptr<Vec> &vec);
 
-        Tensor *atHelper(const std::vector<size_t> &idx);
-
-    public:
         Tensor(const Tensor &tensor);
 
-        ~Tensor() = default;
+        ~Tensor();
 
         size_t getId() const {
             return id;
@@ -59,111 +73,111 @@ namespace Toygrad::Tensor {
             return shape;
         }
 
-        inline Tensor &getGrad() const;
+        TensorPtr getGrad() const {
+            return grad;
+        }
 
-        std::shared_ptr<const Vec> getVec() const {
+        std::shared_ptr<Vec> getVec() const {
             return vec;
         }
 
         bool isContiguous() const;
 
-        Tensor &at(const std::vector<size_t> &idx);
+        TensorPtr at(const std::vector<size_t> &idx);
 
-        Tensor &at(const std::vector<Range> &ranges);
+        TensorPtr at(const std::vector<Range> &ranges);
 
-        static Tensor &arange(const Shape &shape, real start, real step = 1.);
+        static TensorPtr arange(const Shape &shape, real start, real step = 1.);
 
-        static Tensor &randint(const Shape &shape, int min, int max);
+        static TensorPtr randint(const Shape &shape, int min, int max);
 
-        static Tensor &randn(const Shape &shape);
+        static TensorPtr randn(const Shape &shape);
 
-        static Tensor &fromConst(const Shape &shape, real c);
+        static TensorPtr fromConst(const Shape &shape, real c);
 
-        static Tensor &fromArr(const Shape &shape, const real *data);
+        static TensorPtr fromArr(const Shape &shape, const real *data);
 
         friend std::ostream &operator<<(std::ostream &stream, Tensor &tensor);
 
-        Tensor &operator[](size_t idx);
+        TensorPtr operator[](size_t idx);
 
-        Tensor &operator+(Tensor &rhs);
+        TensorPtr add(const TensorPtr &rhs);
 
-        Tensor &operator+(real c);
+        TensorPtr add(real c);
 
-        Tensor &operator-(Tensor &rhs);
+        TensorPtr sub(const TensorPtr &rhs);
 
-        Tensor &operator-(real c);
+        TensorPtr sub(real c);
 
-        Tensor &operator*(Tensor &rhs);
+        TensorPtr mul(const TensorPtr &rhs);
 
-        Tensor &operator*(real c);
+        TensorPtr mul(real c);
 
-        Tensor &operator/(Tensor &rhs);
+        TensorPtr div(const TensorPtr &rhs);
 
-        Tensor &operator/(real c);
+        TensorPtr div(real c);
 
-        Tensor &exp();
+        TensorPtr exp();
 
-        Tensor &eq(Tensor &rhs);
+        TensorPtr recip(real c = 1);
 
-        Tensor &eq(real c);
+        TensorPtr sq();
+
+        TensorPtr neg();
+
+        TensorPtr eq(const TensorPtr &rhs);
+
+        TensorPtr eq(real c);
 
         bool operator==(Tensor &rhs);
 
-        Tensor &neq(Tensor &rhs);
+        TensorPtr neq(const TensorPtr &rhs);
 
-        Tensor &neq(real c);
+        TensorPtr neq(real c);
 
         bool operator!=(Tensor &rhs);
 
-        Tensor &operator<(Tensor &rhs);
+        TensorPtr lt(const TensorPtr &rhs);
 
-        Tensor &operator<(real c);
+        TensorPtr lt(real c);
 
-        Tensor &operator>(Tensor &rhs);
+        TensorPtr gt(const TensorPtr &rhs);
 
-        Tensor &operator>(real c);
+        TensorPtr gt(real c);
 
-        Tensor &operator<=(Tensor &rhs);
+        TensorPtr leq(const TensorPtr &rhs);
 
-        Tensor &operator<=(real c);
+        TensorPtr leq(real c);
 
-        Tensor &operator>=(Tensor &rhs);
+        TensorPtr geq(const TensorPtr &rhs);
 
-        Tensor &operator>=(real c);
+        TensorPtr geq(real c);
 
         Tensor &operator=(const Tensor &rhs);
 
         Tensor &operator=(real c);
 
-        Tensor &operator+=(Tensor &rhs);
+        TensorPtr addAssign(const TensorPtr &rhs);
 
-        Tensor &operator+=(real c);
+        TensorPtr addAssign(real c);
 
-        Tensor &operator-=(Tensor &rhs);
+        TensorPtr subAssign(const TensorPtr &rhs);
 
-        Tensor &operator-=(real c);
+        TensorPtr subAssign(real c);
 
-        Tensor &operator*=(Tensor &rhs);
+        TensorPtr mulAssign(const TensorPtr &rhs);
 
-        Tensor &operator*=(real c);
+        TensorPtr mulAssign(real c);
 
-        Tensor &operator/=(Tensor &rhs);
+        TensorPtr divAssign(const TensorPtr &rhs);
 
-        Tensor &operator/=(real c);
+        TensorPtr divAssign(real c);
 
-        friend Tensor &operator+(real c, Tensor &rhs);
+        TensorPtr relu();
 
-        friend Tensor &operator-(real c, Tensor &rhs);
+        TensorPtr reshape(const Shape &shape);
 
-        friend Tensor &operator*(real c, Tensor &rhs);
-
-        friend Tensor &operator/(real c, Tensor &rhs);
-
-        Tensor &relu();
-
-        Tensor &reshape(const Shape &shape);
-
-        Tensor &sum();
+        TensorPtr sum();
 
         void backward();
     };

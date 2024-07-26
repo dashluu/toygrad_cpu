@@ -44,7 +44,7 @@ namespace Toygrad::Tensor {
 
     void SumOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand->tensor);
+        std::unique_ptr<Iter> operandIter = initIter(operand.get());
         real sum = 0;
 
         for (operandIter->start(); operandIter->hasNext(); operandIter->next()) {
@@ -56,16 +56,14 @@ namespace Toygrad::Tensor {
     }
 
     void SumOp::backward() {
-        if (operand->opType != OpType::LEAF) {
-            operand->initGrad();
-            *(operand->grad) += *grad * 1.;
-        }
+        operand->initGrad();
+        operand->grad->addAssign(tensor->grad->mul(1.));
     }
 
     void AddOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs->tensor);
-        std::unique_ptr<Iter> rhsIter = initIter(rhs->tensor);
+        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
+        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
 
         for (resultIter->start(), lhsIter->start(), rhsIter->start();
              resultIter->hasNext();
@@ -75,32 +73,32 @@ namespace Toygrad::Tensor {
     }
 
     void AddOp::backward() {
-        if (lhs->opType != OpType::LEAF) {
-            lhs->initGrad();
-            *lhs->grad += *grad * 1.;
-        }
-
-        if (rhs->opType != OpType::LEAF) {
-            rhs->initGrad();
-            *rhs->grad += *grad * 1.;
-        }
+        lhs->initGrad();
+        lhs->grad->addAssign(tensor->grad->mul(1.));
+        rhs->initGrad();
+        rhs->grad->addAssign(tensor->grad->mul(1.));
     }
 
     void AddAssignOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand->tensor);
+        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
+        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), operandIter->start();
+        for (resultIter->start(), lhsIter->start(), rhsIter->start();
              resultIter->hasNext();
-             resultIter->next(), operandIter->next()) {
-            resultIter->curr() += operandIter->curr();
+             resultIter->next(), lhsIter->next(), rhsIter->next()) {
+            resultIter->curr() = lhsIter->curr() + rhsIter->curr();
         }
+    }
+
+    void AddAssignOp::backward() {
+        lhs->grad = tensor->grad;
     }
 
     void SubOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs->tensor);
-        std::unique_ptr<Iter> rhsIter = initIter(rhs->tensor);
+        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
+        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
 
         for (resultIter->start(), lhsIter->start(), rhsIter->start();
              resultIter->hasNext();
@@ -110,32 +108,32 @@ namespace Toygrad::Tensor {
     }
 
     void SubOp::backward() {
-        if (lhs->opType != OpType::LEAF) {
-            lhs->initGrad();
-            *lhs->grad += *grad * 1.;
-        }
-
-        if (rhs->opType != OpType::LEAF) {
-            rhs->initGrad();
-            *rhs->grad += *grad * -1.;
-        }
+        lhs->initGrad();
+        lhs->grad->addAssign(tensor->grad->mul(1.));
+        rhs->initGrad();
+        rhs->grad->addAssign(tensor->grad->mul(-1.));
     }
 
     void SubAssignOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand->tensor);
+        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
+        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), operandIter->start();
+        for (resultIter->start(), lhsIter->start(), rhsIter->start();
              resultIter->hasNext();
-             resultIter->next(), operandIter->next()) {
-            resultIter->curr() -= operandIter->curr();
+             resultIter->next(), lhsIter->next(), rhsIter->next()) {
+            resultIter->curr() = lhsIter->curr() - rhsIter->curr();
         }
+    }
+
+    void SubAssignOp::backward() {
+        lhs->grad = tensor->grad;
     }
 
     void MulOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs->tensor);
-        std::unique_ptr<Iter> rhsIter = initIter(rhs->tensor);
+        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
+        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
 
         for (resultIter->start(), lhsIter->start(), rhsIter->start();
              resultIter->hasNext();
@@ -145,32 +143,32 @@ namespace Toygrad::Tensor {
     }
 
     void MulOp::backward() {
-        if (lhs->opType != OpType::LEAF) {
-            lhs->initGrad();
-            *lhs->grad += *grad * *rhs->tensor;
-        }
-
-        if (rhs->opType != OpType::LEAF) {
-            rhs->initGrad();
-            *rhs->grad += *grad * *lhs->tensor;
-        }
+        lhs->initGrad();
+        lhs->grad->addAssign(tensor->grad->mul(rhs));
+        rhs->initGrad();
+        rhs->grad->addAssign(tensor->grad->mul(lhs));
     }
 
     void MulAssignOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand->tensor);
+        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
+        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), operandIter->start();
+        for (resultIter->start(), lhsIter->start(), rhsIter->start();
              resultIter->hasNext();
-             resultIter->next(), operandIter->next()) {
-            resultIter->curr() *= operandIter->curr();
+             resultIter->next(), lhsIter->next(), rhsIter->next()) {
+            resultIter->curr() = lhsIter->curr() * rhsIter->curr();
         }
+    }
+
+    void MulAssignOp::backward() {
+        lhs->grad = tensor->grad;
     }
 
     void DivOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs->tensor);
-        std::unique_ptr<Iter> rhsIter = initIter(rhs->tensor);
+        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
+        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
 
         for (resultIter->start(), lhsIter->start(), rhsIter->start();
              resultIter->hasNext();
@@ -180,31 +178,35 @@ namespace Toygrad::Tensor {
     }
 
     void DivOp::backward() {
-        if (lhs->opType != OpType::LEAF) {
-            lhs->initGrad();
-            *lhs->grad += *grad * (1. / *rhs->tensor);
-        }
-
-        if (rhs->opType != OpType::LEAF) {
-            rhs->initGrad();
-            *rhs->grad += *grad * (*lhs->tensor * (-1. / (*rhs->tensor * *rhs->tensor)));
-        }
+        lhs->initGrad();
+        // z = x/y
+        // dx = dz * (1/y)
+        lhs->grad->addAssign(tensor->grad->mul(rhs->recip()));
+        rhs->initGrad();
+        // z = x/y
+        // dy = dz * (-x / y^2)
+        rhs->grad->addAssign(tensor->grad->mul(lhs->neg()->div(rhs->sq())));
     }
 
     void DivAssignOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand->tensor);
+        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
+        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), operandIter->start();
+        for (resultIter->start(), lhsIter->start(), rhsIter->start();
              resultIter->hasNext();
-             resultIter->next(), operandIter->next()) {
-            resultIter->curr() /= operandIter->curr();
+             resultIter->next(), lhsIter->next(), rhsIter->next()) {
+            resultIter->curr() = lhsIter->curr() / rhsIter->curr();
         }
+    }
+
+    void DivAssignOp::backward() {
+        lhs->grad = tensor->grad;
     }
 
     void ExpOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand->tensor);
+        std::unique_ptr<Iter> operandIter = initIter(operand.get());
 
         for (resultIter->start(), operandIter->start();
              resultIter->hasNext();
@@ -214,16 +216,68 @@ namespace Toygrad::Tensor {
     }
 
     void ExpOp::backward() {
-        if (operand->opType != OpType::LEAF) {
-            operand->initGrad();
-            *operand->grad += *grad * *operand->tensor * *tensor;
+        operand->initGrad();
+        // z = e^x
+        // dx = dz * e^x
+        operand->grad->addAssign(tensor->grad->mul(operand->exp()));
+    }
+
+    void RecipOp::forward() {
+        std::unique_ptr<Iter> resultIter = initIter(tensor);
+        std::unique_ptr<Iter> operandIter = initIter(operand.get());
+
+        for (resultIter->start(), operandIter->start();
+             resultIter->hasNext();
+             resultIter->next(), operandIter->next()) {
+            resultIter->curr() = c / operandIter->curr();
         }
+    }
+
+    void RecipOp::backward() {
+        operand->initGrad();
+        // z = c / x
+        // dx = dz * (-c / x^2)
+        operand->addAssign(tensor->grad->mul(operand->sq()->recip(-c)));
+    }
+
+    void NegOp::forward() {
+        std::unique_ptr<Iter> resultIter = initIter(tensor);
+        std::unique_ptr<Iter> operandIter = initIter(operand.get());
+
+        for (resultIter->start(), operandIter->start();
+             resultIter->hasNext();
+             resultIter->next(), operandIter->next()) {
+            resultIter->curr() = -operandIter->curr();
+        }
+    }
+
+    void NegOp::backward() {
+        operand->initGrad();
+        operand->addAssign(tensor->grad->mul(-1.));
+    }
+
+    void SqOp::forward() {
+        std::unique_ptr<Iter> resultIter = initIter(tensor);
+        std::unique_ptr<Iter> operandIter = initIter(operand.get());
+
+        for (resultIter->start(), operandIter->start();
+             resultIter->hasNext();
+             resultIter->next(), operandIter->next()) {
+            resultIter->curr() = operandIter->curr() * operandIter->curr();
+        }
+    }
+
+    void SqOp::backward() {
+        operand->initGrad();
+        // z = x^2
+        // dx = dz * 2x
+        operand->addAssign(tensor->grad->mul(operand->mul(2)));
     }
 
     void EqOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs->tensor);
-        std::unique_ptr<Iter> rhsIter = initIter(rhs->tensor);
+        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
+        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
 
         for (resultIter->start(), lhsIter->start(), rhsIter->start();
              resultIter->hasNext();
@@ -234,8 +288,8 @@ namespace Toygrad::Tensor {
 
     void NeqOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs->tensor);
-        std::unique_ptr<Iter> rhsIter = initIter(rhs->tensor);
+        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
+        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
 
         for (resultIter->start(), lhsIter->start(), rhsIter->start();
              resultIter->hasNext();
@@ -246,8 +300,8 @@ namespace Toygrad::Tensor {
 
     void LessOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs->tensor);
-        std::unique_ptr<Iter> rhsIter = initIter(rhs->tensor);
+        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
+        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
 
         for (resultIter->start(), lhsIter->start(), rhsIter->start();
              resultIter->hasNext();
@@ -258,8 +312,8 @@ namespace Toygrad::Tensor {
 
     void GreaterOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs->tensor);
-        std::unique_ptr<Iter> rhsIter = initIter(rhs->tensor);
+        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
+        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
 
         for (resultIter->start(), lhsIter->start(), rhsIter->start();
              resultIter->hasNext();
@@ -270,8 +324,8 @@ namespace Toygrad::Tensor {
 
     void LeqOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs->tensor);
-        std::unique_ptr<Iter> rhsIter = initIter(rhs->tensor);
+        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
+        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
 
         for (resultIter->start(), lhsIter->start(), rhsIter->start();
              resultIter->hasNext();
@@ -282,8 +336,8 @@ namespace Toygrad::Tensor {
 
     void GeqOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs->tensor);
-        std::unique_ptr<Iter> rhsIter = initIter(rhs->tensor);
+        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
+        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
 
         for (resultIter->start(), lhsIter->start(), rhsIter->start();
              resultIter->hasNext();
@@ -294,7 +348,7 @@ namespace Toygrad::Tensor {
 
     void ReluOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand->tensor);
+        std::unique_ptr<Iter> operandIter = initIter(operand.get());
 
         for (resultIter->start(), operandIter->start();
              resultIter->hasNext();
@@ -304,15 +358,13 @@ namespace Toygrad::Tensor {
     }
 
     void ReluOp::backward() {
-        if (operand->opType != OpType::LEAF) {
-            operand->initGrad();
-            *operand->grad += *grad * (*operand->tensor > 0.);
-        }
+        operand->initGrad();
+        operand->grad->addAssign(tensor->grad->mul(operand->gt(0.)));
     }
 
     void CopyOp::forward() {
         std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand->tensor);
+        std::unique_ptr<Iter> operandIter = initIter(operand.get());
 
         for (resultIter->start(), operandIter->start();
              resultIter->hasNext();

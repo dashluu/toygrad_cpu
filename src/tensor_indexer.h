@@ -14,8 +14,8 @@ namespace Toygrad::Tensor {
         explicit TensorIndexer(Tensor *tensor): tensor(tensor) {
         }
 
-        Tensor *at(const std::vector<size_t> &idx);
+        TensorPtr at(const std::vector<size_t> &idx);
 
-        Tensor *at(const std::vector<Range> &ranges);
+        TensorPtr at(const std::vector<Range> &ranges);
     };
 }

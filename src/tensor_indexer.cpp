@@ -7,7 +7,7 @@
 #include "ops.h"
 
 namespace Toygrad::Tensor {
-    Tensor *TensorIndexer::at(const std::vector<size_t> &idx) {
+    TensorPtr TensorIndexer::at(const std::vector<size_t> &idx) {
         auto ranges = std::vector<Range>();
 
         for (size_t i: idx) {
@@ -21,7 +21,7 @@ namespace Toygrad::Tensor {
         return at(ranges);
     }
 
-    Tensor *TensorIndexer::at(const std::vector<Range> &ranges) {
+    TensorPtr TensorIndexer::at(const std::vector<Range> &ranges) {
         Shape shape;
         shape.offset = tensor->shape.offset;
         shape.root = &tensor->shape;
@@ -38,6 +38,6 @@ namespace Toygrad::Tensor {
         }
 
         shape.initSt(shape.sst);
-        return new Tensor(shape, tensor->vec);
+        return std::make_shared<Tensor>(shape, tensor->vec);
     }
 }

@@ -1,5 +1,4 @@
 #include <iostream>
-#include <utility>
 
 #include "tensor.h"
 #include "ops.h"
@@ -19,9 +18,9 @@ namespace Toygrad::Tensor {
         vec = std::make_shared<Vec>(shape.getSize());
     }
 
-    Tensor::Tensor(const Shape &shape, std::shared_ptr<Vec> vec): Tensor() {
+    Tensor::Tensor(const Shape &shape, const std::shared_ptr<Vec> &vec): Tensor() {
         this->shape = shape;
-        this->vec = std::move(vec);
+        this->vec = vec;
     }
 
     Tensor::Tensor(const Tensor &tensor): Tensor() {
@@ -29,8 +28,8 @@ namespace Toygrad::Tensor {
         vec = tensor.vec;
     }
 
-    Tensor &Tensor::getGrad() const {
-        return *op->grad;
+    Tensor::~Tensor() {
+        delete op;
     }
 
     std::ostream &operator<<(std::ostream &stream, Tensor &tensor) {
@@ -82,7 +81,7 @@ namespace Toygrad::Tensor {
         return stream;
     }
 
-    Tensor *Tensor::atHelper(const std::vector<size_t> &idx) {
+    TensorPtr Tensor::atHelper(const std::vector<size_t> &idx) {
         assert(str_assert(shape.getNumDims() > idx.size(), AssertMessage::indexMultipleDimsOnly));
 
         // Index must stay within bounds
@@ -99,138 +98,142 @@ namespace Toygrad::Tensor {
                                    [](const Range &range) { return range.step > 1; });
     }
 
-    Tensor &Tensor::at(const std::vector<size_t> &idx) {
-        auto outTensor = atHelper(idx);
-        return *outTensor;
+    TensorPtr Tensor::at(const std::vector<size_t> &idx) {
+        return atHelper(idx);
     }
 
-    Tensor &Tensor::at(const std::vector<Range> &ranges) {
+    TensorPtr Tensor::at(const std::vector<Range> &ranges) {
         assert(str_assert(shape.getNumDims() >= ranges.size(), AssertMessage::indexMultipleDimsOnly));
         TensorIndexer indexer(this);
-        return *indexer.at(ranges);
+        return indexer.at(ranges);
     }
 
-    Tensor &Tensor::arange(const Shape &shape, real start, real step) {
-        auto outTensor = new Tensor(shape);
-        auto outOp = new ArangeOp(outTensor, start, step);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::arange(const Shape &shape, real start, real step) {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new ArangeOp(outTensor.get(), start, step);
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::randint(const Shape &shape, int min, int max) {
-        auto outTensor = new Tensor(shape);
-        auto outOp = new RandintOp(outTensor, min, max);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::randint(const Shape &shape, int min, int max) {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new RandintOp(outTensor.get(), min, max);
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::randn(const Shape &shape) {
-        auto outTensor = new Tensor(shape);
-        auto outOp = new RandnOp(outTensor);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::randn(const Shape &shape) {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new RandnOp(outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::fromConst(const Shape &shape, real c) {
-        auto outTensor = new Tensor(shape);
-        auto outOp = new ConstOp(outTensor, c);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::fromConst(const Shape &shape, real c) {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new ConstOp(outTensor.get(), c);
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::fromArr(const Shape &shape, const real *data) {
-        auto outTensor = new Tensor(shape);
-        auto outOp = new FromArrOp(outTensor, data);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::fromArr(const Shape &shape, const real *data) {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new FromArrOp(outTensor.get(), data);
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::operator[](size_t idx) {
+    TensorPtr Tensor::operator[](size_t idx) {
         auto outTensor = atHelper(std::vector(1, idx));
-        return *outTensor;
+        return outTensor;
     }
 
-    Tensor &Tensor::operator+(Tensor &rhs) {
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        auto outTensor = new Tensor(shape);
-        auto outOp = new AddOp(op, rhs.op, outTensor);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::add(const TensorPtr &rhs) {
+        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new AddOp(shared_from_this(), rhs, outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::operator+(real c) {
-        auto &rhs = fromConst(shape, c);
-        return *this + rhs;
+    TensorPtr Tensor::add(real c) {
+        return add(fromConst(shape, c));
     }
 
-    Tensor &Tensor::operator-(Tensor &rhs) {
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        auto outTensor = new Tensor(shape);
-        auto outOp = new SubOp(op, rhs.op, outTensor);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::sub(const TensorPtr &rhs) {
+        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new SubOp(shared_from_this(), rhs, outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::operator-(real c) {
-        auto &rhs = fromConst(shape, c);
-        return *this - rhs;
+    TensorPtr Tensor::sub(real c) {
+        return sub(fromConst(shape, c));
     }
 
-    Tensor &Tensor::operator*(Tensor &rhs) {
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        auto outTensor = new Tensor(shape);
-        auto outOp = new MulOp(op, rhs.op, outTensor);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::mul(const TensorPtr &rhs) {
+        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new MulOp(shared_from_this(), rhs, outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::operator*(real c) {
-        auto &rhs = fromConst(shape, c);
-        return *this * rhs;
+    TensorPtr Tensor::mul(real c) {
+        return mul(fromConst(shape, c));
     }
 
-    Tensor &Tensor::operator/(Tensor &rhs) {
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        auto outTensor = new Tensor(shape);
-        auto outOp = new DivOp(op, rhs.op, outTensor);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::div(const TensorPtr &rhs) {
+        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new DivOp(shared_from_this(), rhs, outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::operator/(real c) {
-        auto &rhs = fromConst(shape, c);
-        return *this / rhs;
+    TensorPtr Tensor::div(real c) {
+        return div(fromConst(shape, c));
     }
 
-    Tensor &Tensor::exp() {
-        auto outTensor = new Tensor(shape);
-        auto outOp = new ExpOp(op, outTensor);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::exp() {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new ExpOp(shared_from_this(), outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::eq(Tensor &rhs) {
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        auto outTensor = new Tensor(shape);
-        auto outOp = new EqOp(op, rhs.op, outTensor);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::recip(real c) {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new RecipOp(shared_from_this(), outTensor.get(), c);
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::eq(real c) {
-        auto &rhs = fromConst(shape, c);
-        return eq(rhs);
+    TensorPtr Tensor::sq() {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new SqOp(shared_from_this(), outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
+    }
+
+    TensorPtr Tensor::neg() {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new NegOp(shared_from_this(), outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
+    }
+
+    TensorPtr Tensor::eq(const TensorPtr &rhs) {
+        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new EqOp(shared_from_this(), rhs, outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
+    }
+
+    TensorPtr Tensor::eq(real c) {
+        return eq(fromConst(shape, c));
     }
 
     bool Tensor::operator==(Tensor &rhs) {
@@ -250,78 +253,68 @@ namespace Toygrad::Tensor {
         return true;
     }
 
-    Tensor &Tensor::neq(Tensor &rhs) {
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        auto outTensor = new Tensor(shape);
-        auto outOp = new NeqOp(op, rhs.op, outTensor);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::neq(const TensorPtr &rhs) {
+        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new NeqOp(shared_from_this(), rhs, outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::neq(real c) {
-        auto &rhs = fromConst(shape, c);
-        return neq(rhs);
+    TensorPtr Tensor::neq(real c) {
+        return neq(fromConst(shape, c));
     }
 
     bool Tensor::operator!=(Tensor &rhs) {
         return !(*this == rhs);
     }
 
-    Tensor &Tensor::operator<(Tensor &rhs) {
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        auto outTensor = new Tensor(shape);
-        auto outOp = new LessOp(op, rhs.op, outTensor);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::lt(const TensorPtr &rhs) {
+        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new LessOp(shared_from_this(), rhs, outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::operator<(real c) {
-        auto &rhs = fromConst(shape, c);
-        return *this < rhs;
+    TensorPtr Tensor::lt(real c) {
+        return lt(fromConst(shape, c));
     }
 
-    Tensor &Tensor::operator>(Tensor &rhs) {
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        auto outTensor = new Tensor(shape);
-        auto outOp = new GreaterOp(op, rhs.op, outTensor);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::gt(const TensorPtr &rhs) {
+        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new GreaterOp(shared_from_this(), rhs, outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::operator>(real c) {
-        auto &rhs = fromConst(shape, c);
-        return *this > rhs;
+    TensorPtr Tensor::gt(real c) {
+        return gt(fromConst(shape, c));
     }
 
-    Tensor &Tensor::operator<=(Tensor &rhs) {
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        auto outTensor = new Tensor(shape);
-        auto outOp = new LeqOp(op, rhs.op, outTensor);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::leq(const TensorPtr &rhs) {
+        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new LeqOp(shared_from_this(), rhs, outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::operator<=(real c) {
-        auto &rhs = fromConst(shape, c);
-        return *this <= rhs;
+    TensorPtr Tensor::leq(real c) {
+        return leq(fromConst(shape, c));
     }
 
-    Tensor &Tensor::operator>=(Tensor &rhs) {
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        auto outTensor = new Tensor(shape);
-        auto outOp = new GeqOp(op, rhs.op, outTensor);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::geq(const TensorPtr &rhs) {
+        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new GeqOp(shared_from_this(), rhs, outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::operator>=(real c) {
-        auto &rhs = fromConst(shape, c);
-        return *this >= rhs;
+    TensorPtr Tensor::geq(real c) {
+        return geq(fromConst(shape, c));
     }
 
     Tensor &Tensor::operator=(const Tensor &rhs) {
@@ -331,119 +324,91 @@ namespace Toygrad::Tensor {
 
         assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
         vec = rhs.vec;
-        // Keep the edges the same
-        // Do not copy op since that creates new unwanted edges
+        // Keep the edges and op the same
         return *this;
     }
 
     Tensor &Tensor::operator=(real c) {
-        auto &constTensor = fromConst(shape, c);
-        return (*this = constTensor);
+        auto constTensor = fromConst(shape, c);
+        return *this = *constTensor;
     }
 
-    Tensor &Tensor::operator+=(Tensor &rhs) {
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        auto outOp = new AddAssignOp(rhs.op, this);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *this;
+    TensorPtr Tensor::addAssign(const TensorPtr &rhs) {
+        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new AddAssignOp(shared_from_this(), rhs, outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::operator+=(real c) {
-        auto &constTensor = fromConst(shape, c);
-        return *this += constTensor;
+    TensorPtr Tensor::addAssign(real c) {
+        return addAssign(fromConst(shape, c));
     }
 
-    Tensor &Tensor::operator-=(Tensor &rhs) {
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        auto outOp = new SubAssignOp(rhs.op, this);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *this;
+    TensorPtr Tensor::subAssign(const TensorPtr &rhs) {
+        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new SubAssignOp(shared_from_this(), rhs, outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::operator-=(real c) {
-        auto &constTensor = fromConst(shape, c);
-        return *this -= constTensor;
+    TensorPtr Tensor::subAssign(real c) {
+        return subAssign(fromConst(shape, c));
     }
 
-    Tensor &Tensor::operator*=(Tensor &rhs) {
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        auto outOp = new MulAssignOp(rhs.op, this);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *this;
+    TensorPtr Tensor::mulAssign(const TensorPtr &rhs) {
+        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new MulAssignOp(shared_from_this(), rhs, outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::operator*=(real c) {
-        auto &constTensor = fromConst(shape, c);
-        return *this *= constTensor;
+    TensorPtr Tensor::mulAssign(real c) {
+        return mulAssign(fromConst(shape, c));
     }
 
-    Tensor &Tensor::operator/=(Tensor &rhs) {
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        auto outOp = new DivAssignOp(rhs.op, this);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *this;
+    TensorPtr Tensor::divAssign(const TensorPtr &rhs) {
+        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new DivAssignOp(shared_from_this(), rhs, outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &Tensor::operator/=(real c) {
-        auto &constTensor = fromConst(shape, c);
-        return *this /= constTensor;
+    TensorPtr Tensor::divAssign(real c) {
+        return divAssign(fromConst(shape, c));
     }
 
-    Tensor &operator+(real c, Tensor &rhs) {
-        auto &constTensor = Tensor::fromConst(rhs.shape, c);
-        return constTensor + rhs;
+    TensorPtr Tensor::relu() {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new ReluOp(shared_from_this(), outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
-    Tensor &operator-(real c, Tensor &rhs) {
-        auto &constTensor = Tensor::fromConst(rhs.shape, c);
-        return constTensor - rhs;
-    }
-
-    Tensor &operator*(real c, Tensor &rhs) {
-        auto &constTensor = Tensor::fromConst(rhs.shape, c);
-        return constTensor * rhs;
-    }
-
-    Tensor &operator/(real c, Tensor &rhs) {
-        auto &constTensor = Tensor::fromConst(rhs.shape, c);
-        return constTensor / rhs;
-    }
-
-    Tensor &Tensor::relu() {
-        auto outTensor = new Tensor(shape);
-        auto outOp = new ReluOp(op, outTensor);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
-    }
-
-    Tensor &Tensor::reshape(const Shape &shape) {
+    TensorPtr Tensor::reshape(const Shape &shape) {
         assert(str_assert(shape.getSize() == this->shape.getSize(), AssertMessage::shapesMismatched));
-        Tensor *outTensor;
+        TensorPtr outTensor;
 
         if (isContiguous()) {
-            outTensor = new Tensor(shape, vec);
+            outTensor = std::make_shared<Tensor>(shape, vec);
             outTensor->shape.offset = this->shape.offset;
         } else {
-            outTensor = new Tensor(shape);
-            auto outOp = new CopyOp(op, outTensor);
-            outOp->forward();
-            Graph::addOp(outOp);
+            outTensor = std::make_shared<Tensor>(shape);
+            outTensor->op = new CopyOp(shared_from_this(), outTensor.get());
+            outTensor->op->forward();
         }
 
-        return *outTensor;
+        return outTensor;
     }
 
-    Tensor &Tensor::sum() {
-        auto outTensor = new Tensor(Shape());
-        auto outOp = new SumOp(op, outTensor);
-        outOp->forward();
-        Graph::addOp(outOp);
-        return *outTensor;
+    TensorPtr Tensor::sum() {
+        auto outTensor = std::make_shared<Tensor>(Shape());
+        outTensor->op = new SumOp(shared_from_this(), outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
     void Tensor::backward() {

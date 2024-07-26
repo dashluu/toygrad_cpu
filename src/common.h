@@ -16,6 +16,8 @@ namespace Toygrad::Tensor {
     class Tensor;
     class TensorIndexer;
     struct Op;
+    struct UnOp;
+    struct BinOp;
     struct IndexOp;
     struct ConstOp;
     struct ArangeOp;
@@ -32,6 +34,9 @@ namespace Toygrad::Tensor {
     struct DivOp;
     struct DivAssignOp;
     struct ExpOp;
+    struct RecipOp;
+    struct NegOp;
+    struct SqOp;
     struct EqOp;
     struct NeqOp;
     struct LessOp;
@@ -39,4 +44,6 @@ namespace Toygrad::Tensor {
     struct LeqOp;
     struct GeqOp;
     struct ReluOp;
+
+    using TensorPtr = std::shared_ptr<Tensor>;
 }

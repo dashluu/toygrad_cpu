@@ -14,8 +14,8 @@ namespace Toygrad::Tensor {
 
     enum class OpName {
         INDEX, CONST, ARANGE, FROM_ARR, RANDINT, RANDN,
+        ADD, SUB, MUL, DIV, EXP, RECIP, NEG, SQ,
         ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN,
-        ADD, SUB, MUL, DIV, EXP,
         EQ, NEQ, LESS, GREATER, LEQ, GEQ,
         RELU, SUM,
         COPY
@@ -25,62 +25,53 @@ namespace Toygrad::Tensor {
         OpType opType;
         OpName opName;
         Tensor *tensor;
-        Tensor *grad = nullptr;
-        std::vector<Op *> edges = std::vector<Op *>();
 
         Op(OpType opType, OpName opName, Tensor *tensor) : opType(opType), opName(opName), tensor(tensor) {
-            tensor->op = this;
         }
 
-        virtual ~Op() {
-            delete tensor;
-            delete grad;
-        }
+        virtual ~Op() = default;
 
         virtual void forward() {
         }
 
         virtual void backward() {
         }
-
-        void initGrad() {
-            if (grad == nullptr) {
-                grad = new Tensor(tensor->shape);
-            }
-        }
     };
 
     struct UnOp : Op {
-        Op *operand = nullptr;
+        TensorPtr operand;
 
-        UnOp(OpName opName, Op *operand, Tensor *tensor): Op(OpType::UN_OP, opName, tensor), operand(operand) {
-            operand->edges.push_back(this);
+        UnOp(OpName opName, const TensorPtr &operand, Tensor *tensor): Op(OpType::UN_OP, opName, tensor),
+                                                                       operand(operand) {
+            operand->edges.push_back(tensor);
         }
     };
 
     struct BinOp : Op {
-        Op *lhs = nullptr;
-        Op *rhs = nullptr;
+        TensorPtr lhs;
+        TensorPtr rhs;
 
-        BinOp(OpName opName, Op *lhs, Op *rhs, Tensor *tensor): Op(OpType::BIN_OP, opName, tensor), lhs(lhs),
-                                                                rhs(rhs) {
-            lhs->edges.push_back(this);
-            rhs->edges.push_back(this);
+        BinOp(OpName opName, const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): Op(OpType::BIN_OP, opName,
+                tensor),
+            lhs(lhs), rhs(rhs) {
+            lhs->edges.push_back(tensor);
+            rhs->edges.push_back(tensor);
         }
     };
 
     struct IndexOp final : UnOp {
         std::vector<size_t> idx;
 
-        explicit IndexOp(Op *operand, Tensor *tensor, const std::vector<size_t> &idx): UnOp(OpName::INDEX, operand,
-                tensor), idx(idx) {
+        IndexOp(const TensorPtr &operand, Tensor *tensor, const std::vector<size_t> &idx): UnOp(OpName::INDEX, operand,
+                tensor),
+            idx(idx) {
         }
     };
 
     struct ConstOp final : Op {
         real c;
 
-        explicit ConstOp(Tensor *tensor, real c) : Op(OpType::LEAF, OpName::CONST, tensor), c(c) {
+        ConstOp(Tensor *tensor, real c) : Op(OpType::LEAF, OpName::CONST, tensor), c(c) {
         }
     };
 
@@ -99,8 +90,7 @@ namespace Toygrad::Tensor {
         int min;
         int max;
 
-        RandintOp(Tensor *tensor, int min, int max) : Op(OpType::LEAF, OpName::RANDINT, tensor), min(min),
-                                                      max(max) {
+        RandintOp(Tensor *tensor, int min, int max) : Op(OpType::LEAF, OpName::RANDINT, tensor), min(min), max(max) {
         }
 
         void forward() override;
@@ -123,7 +113,7 @@ namespace Toygrad::Tensor {
     };
 
     struct SumOp final : UnOp {
-        SumOp(Op *operand, Tensor *tensor): UnOp(OpName::SUM, operand, tensor) {
+        SumOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::SUM, operand, tensor) {
         }
 
         void forward() override;
@@ -132,7 +122,7 @@ namespace Toygrad::Tensor {
     };
 
     struct AddOp final : BinOp {
-        AddOp(Op *lhs, Op *rhs, Tensor *tensor): BinOp(OpName::ADD, lhs, rhs, tensor) {
+        AddOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): BinOp(OpName::ADD, lhs, rhs, tensor) {
         }
 
         void forward() override;
@@ -140,15 +130,18 @@ namespace Toygrad::Tensor {
         void backward() override;
     };
 
-    struct AddAssignOp final : UnOp {
-        AddAssignOp(Op *operand, Tensor *tensor): UnOp(OpName::ADD_ASSIGN, operand, tensor) {
+    struct AddAssignOp final : BinOp {
+        AddAssignOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor) : BinOp(
+            OpName::ADD_ASSIGN, lhs, rhs, tensor) {
         }
 
         void forward() override;
+
+        void backward() override;
     };
 
     struct SubOp final : BinOp {
-        SubOp(Op *lhs, Op *rhs, Tensor *tensor): BinOp(OpName::SUB, lhs, rhs, tensor) {
+        SubOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): BinOp(OpName::SUB, lhs, rhs, tensor) {
         }
 
         void forward() override;
@@ -156,15 +149,18 @@ namespace Toygrad::Tensor {
         void backward() override;
     };
 
-    struct SubAssignOp final : UnOp {
-        SubAssignOp(Op *operand, Tensor *tensor): UnOp(OpName::SUB_ASSIGN, operand, tensor) {
+    struct SubAssignOp final : BinOp {
+        SubAssignOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor) : BinOp(
+            OpName::SUB_ASSIGN, lhs, rhs, tensor) {
         }
 
         void forward() override;
+
+        void backward() override;
     };
 
     struct MulOp final : BinOp {
-        MulOp(Op *lhs, Op *rhs, Tensor *tensor): BinOp(OpName::MUL, lhs, rhs, tensor) {
+        MulOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): BinOp(OpName::MUL, lhs, rhs, tensor) {
         }
 
         void forward() override;
@@ -172,15 +168,18 @@ namespace Toygrad::Tensor {
         void backward() override;
     };
 
-    struct MulAssignOp final : UnOp {
-        MulAssignOp(Op *operand, Tensor *tensor): UnOp(OpName::MUL_ASSIGN, operand, tensor) {
+    struct MulAssignOp final : BinOp {
+        MulAssignOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor) : BinOp(
+            OpName::MUL_ASSIGN, lhs, rhs, tensor) {
         }
 
         void forward() override;
+
+        void backward() override;
     };
 
     struct DivOp final : BinOp {
-        DivOp(Op *lhs, Op *rhs, Tensor *tensor): BinOp(OpName::DIV, lhs, rhs, tensor) {
+        DivOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): BinOp(OpName::DIV, lhs, rhs, tensor) {
         }
 
         void forward() override;
@@ -188,15 +187,47 @@ namespace Toygrad::Tensor {
         void backward() override;
     };
 
-    struct DivAssignOp final : UnOp {
-        DivAssignOp(Op *operand, Tensor *tensor): UnOp(OpName::DIV_ASSIGN, operand, tensor) {
+    struct DivAssignOp final : BinOp {
+        DivAssignOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor) : BinOp(
+            OpName::DIV_ASSIGN, lhs, rhs, tensor) {
         }
 
         void forward() override;
+
+        void backward() override;
     };
 
     struct ExpOp final : UnOp {
-        ExpOp(Op *operand, Tensor *tensor): UnOp(OpName::EXP, operand, tensor) {
+        ExpOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::EXP, operand, tensor) {
+        }
+
+        void forward() override;
+
+        void backward() override;
+    };
+
+    struct RecipOp final : UnOp {
+        real c;
+
+        RecipOp(const TensorPtr &operand, Tensor *tensor, real c): UnOp(OpName::RECIP, operand, tensor), c(c) {
+        }
+
+        void forward() override;
+
+        void backward() override;
+    };
+
+    struct NegOp final : UnOp {
+        explicit NegOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::NEG, operand, tensor) {
+        }
+
+        void forward() override;
+
+        void backward() override;
+    };
+
+    struct SqOp final : UnOp {
+        explicit SqOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::SQ, operand, tensor) {
         }
 
         void forward() override;
@@ -205,49 +236,50 @@ namespace Toygrad::Tensor {
     };
 
     struct EqOp final : BinOp {
-        EqOp(Op *lhs, Op *rhs, Tensor *tensor): BinOp(OpName::EQ, lhs, rhs, tensor) {
+        EqOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): BinOp(OpName::EQ, lhs, rhs, tensor) {
         }
 
         void forward() override;
     };
 
     struct NeqOp final : BinOp {
-        NeqOp(Op *lhs, Op *rhs, Tensor *tensor): BinOp(OpName::NEQ, lhs, rhs, tensor) {
+        NeqOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): BinOp(OpName::NEQ, lhs, rhs, tensor) {
         }
 
         void forward() override;
     };
 
     struct LessOp final : BinOp {
-        LessOp(Op *lhs, Op *rhs, Tensor *tensor): BinOp(OpName::LESS, lhs, rhs, tensor) {
+        LessOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): BinOp(OpName::LESS, lhs, rhs, tensor) {
         }
 
         void forward() override;
     };
 
     struct GreaterOp final : BinOp {
-        GreaterOp(Op *lhs, Op *rhs, Tensor *tensor): BinOp(OpName::GREATER, lhs, rhs, tensor) {
+        GreaterOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): BinOp(
+            OpName::GREATER, lhs, rhs, tensor) {
         }
 
         void forward() override;
     };
 
     struct LeqOp final : BinOp {
-        LeqOp(Op *lhs, Op *rhs, Tensor *tensor): BinOp(OpName::LEQ, lhs, rhs, tensor) {
+        LeqOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): BinOp(OpName::LEQ, lhs, rhs, tensor) {
         }
 
         void forward() override;
     };
 
     struct GeqOp final : BinOp {
-        GeqOp(Op *lhs, Op *rhs, Tensor *tensor): BinOp(OpName::GEQ, lhs, rhs, tensor) {
+        GeqOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): BinOp(OpName::GEQ, lhs, rhs, tensor) {
         }
 
         void forward() override;
     };
 
     struct ReluOp final : UnOp {
-        ReluOp(Op *operand, Tensor *tensor): UnOp(OpName::RELU, operand, tensor) {
+        ReluOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::RELU, operand, tensor) {
         }
 
         void forward() override;
@@ -256,7 +288,7 @@ namespace Toygrad::Tensor {
     };
 
     struct CopyOp final : UnOp {
-        CopyOp(Op *operand, Tensor *tensor): UnOp(OpName::COPY, operand, tensor) {
+        CopyOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::COPY, operand, tensor) {
         }
 
         void forward() override;
