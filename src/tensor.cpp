@@ -4,7 +4,6 @@
 #include "ops.h"
 #include "tensor_indexer.h"
 #include "tensor_iter.h"
-#include "graph.h"
 
 namespace Toygrad::Tensor {
     size_t Tensor::idCounter = 0;
@@ -33,7 +32,7 @@ namespace Toygrad::Tensor {
     }
 
     std::ostream &operator<<(std::ostream &stream, Tensor &tensor) {
-        std::unique_ptr<Iter> iter = initIter(&tensor);
+        IterPtr iter = initIter(&tensor);
         auto &sst = tensor.shape.sst;
         iter->start();
         bool flag = iter->hasNext();

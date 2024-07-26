@@ -24,7 +24,7 @@ namespace Toygrad::Tensor {
     TensorPtr TensorIndexer::at(const std::vector<Range> &ranges) {
         Shape shape;
         shape.offset = tensor->shape.offset;
-        shape.root = &tensor->shape;
+        shape.parent = &tensor->shape;
         shape.rng = ranges;
 
         for (size_t i = 0; i < ranges.size(); i++) {

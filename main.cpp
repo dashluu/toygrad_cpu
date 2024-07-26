@@ -1,7 +1,6 @@
 #include <iostream>
 
 #include "tensor.h"
-#include "graph.h"
 
 using namespace Toygrad::Tensor;
 
@@ -43,6 +42,5 @@ int main() {
     // // std::cout << t2 << std::endl;
     // std::cout << t4 << std::endl << std::endl;
     // std::cout << t3 << std::endl;
-    Graph::cleanUp();
     return 0;
 }

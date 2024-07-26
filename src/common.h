@@ -13,6 +13,7 @@ namespace Toygrad::Tensor {
         size_t step;
     };
 
+    class TensorIter;
     class Tensor;
     class TensorIndexer;
     struct Op;
@@ -46,4 +47,5 @@ namespace Toygrad::Tensor {
     struct ReluOp;
 
     using TensorPtr = std::shared_ptr<Tensor>;
+    using IterPtr = std::unique_ptr<TensorIter>;
 }

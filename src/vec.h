@@ -5,25 +5,23 @@
 namespace Toygrad::Tensor {
     struct Vec {
         size_t size;
-        real *buff;
+        std::unique_ptr<real[]> buff;
 
         explicit Vec(size_t size) : size(size) {
-            buff = new real[size];
+            buff = std::make_unique<real[]>(size);
         }
 
         Vec(size_t size, real c) : Vec(size) {
-            std::fill_n(buff, size, c);
+            std::fill_n(buff.get(), size, c);
         }
 
         Vec(const Vec &vec) {
             size = vec.size;
-            buff = new real[size];
-            std::ranges::copy(vec.buff, vec.buff + size, buff);
+            buff = std::make_unique<real[]>(size);
+            std::ranges::copy(vec.buff.get(), vec.buff.get() + size, buff.get());
         }
 
-        ~Vec() {
-            delete buff;
-        }
+        ~Vec() = default;
 
         real &operator[](size_t idx) const {
             return buff[idx];

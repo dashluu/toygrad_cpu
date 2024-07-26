@@ -25,13 +25,15 @@ namespace Toygrad::Tensor {
         }
 
         void initRng() {
-            for (size_t &i: view) {
-                rng.push_back({0, i, 1});
+            rng.resize(view.size());
+
+            for (size_t i = 0; i < view.size(); i++) {
+                rng[i] = {0, view[i], 1};
             }
         }
 
     public:
-        Shape *root = nullptr;
+        Shape *parent = nullptr;
         std::vector<Range> rng;
         size_t offset = 0;
         std::vector<size_t> view;
@@ -40,13 +42,13 @@ namespace Toygrad::Tensor {
         // Static strides
         std::vector<size_t> sst;
 
-        Shape(Shape *root, const std::vector<Range> &rng, size_t offset,
-              const std::vector<size_t> &view): root(root), rng(rng), offset(offset), view(view) {
+        Shape(Shape *parent, const std::vector<Range> &rng, size_t offset,
+              const std::vector<size_t> &view): parent(parent), rng(rng), offset(offset), view(view) {
             initSt(dst);
             sst = dst;
         }
 
-        Shape(Shape *root, size_t offset, const std::vector<size_t> &view): root(root), offset(offset), view(view) {
+        Shape(Shape *root, size_t offset, const std::vector<size_t> &view): parent(root), offset(offset), view(view) {
             initSt(dst);
             sst = dst;
             initRng();
@@ -59,7 +61,7 @@ namespace Toygrad::Tensor {
         }
 
         Shape(const Shape &shape) {
-            root = shape.root;
+            parent = shape.parent;
             rng = shape.rng;
             offset = shape.offset;
             view = shape.view;
@@ -80,7 +82,7 @@ namespace Toygrad::Tensor {
                 return *this;
             }
 
-            root = rhs.root;
+            parent = rhs.parent;
             rng = rhs.rng;
             offset = rhs.offset;
             view = rhs.view;

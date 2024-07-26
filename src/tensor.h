@@ -55,8 +55,7 @@ namespace Toygrad::Tensor {
             }
         }
 
-    public
-    :
+    public:
         explicit Tensor(const Shape &shape);
 
         Tensor(const Shape &shape, const std::shared_ptr<Vec> &vec);

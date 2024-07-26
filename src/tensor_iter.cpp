@@ -12,14 +12,14 @@ namespace Toygrad::Tensor {
         bool flag = false;
 
         while (nIdx > 0 && !flag) {
-            auto tmp = shape.root->offset;
+            auto tmp = shape.parent->offset;
 
             for (size_t i = 0; i < nIdx; i++) {
-                tmp += shape.rng[i].beg * shape.root->dst[i];
+                tmp += shape.rng[i].beg * shape.parent->dst[i];
             }
 
             flag = nIndices[nIdx] + 1 < sst[nIdx - 1] &&
-                   offset + (nIndices[nIdx] + 1) * dst[nIdx] < tmp + shape.root->dst[nIdx - 1];
+                   offset + (nIndices[nIdx] + 1) * dst[nIdx] < tmp + shape.parent->dst[nIdx - 1];
 
             if (!flag) {
                 nIdx--;
@@ -41,7 +41,7 @@ namespace Toygrad::Tensor {
         counter++;
     }
 
-    std::unique_ptr<Iter> initIter(Tensor *tensor) {
+    IterPtr initIter(Tensor *tensor) {
         if (tensor->isContiguous()) {
             return std::make_unique<DenseIter>(tensor);
         }

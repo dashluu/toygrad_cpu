@@ -7,16 +7,16 @@
 #include "tensor.h"
 
 namespace Toygrad::Tensor {
-    class Iter {
+    class TensorIter {
     protected:
         Tensor *tensor;
         size_t offset = 0;
 
-        explicit Iter(Tensor *tensor): tensor(tensor) {
+        explicit TensorIter(Tensor *tensor): tensor(tensor) {
         }
 
     public:
-        virtual ~Iter() = default;
+        virtual ~TensorIter() = default;
 
         virtual void start() = 0;
 
@@ -29,11 +29,11 @@ namespace Toygrad::Tensor {
         virtual size_t count() = 0;
     };
 
-    class DenseIter : public Iter {
+    class DenseIter : public TensorIter {
         size_t elmIdx = 0;
 
     public:
-        explicit DenseIter(Tensor *tensor): Iter(tensor) {
+        explicit DenseIter(Tensor *tensor): TensorIter(tensor) {
         }
 
         void start() override {
@@ -57,14 +57,14 @@ namespace Toygrad::Tensor {
         }
     };
 
-    class SparseIter : public Iter {
+    class SparseIter : public TensorIter {
         size_t elmIdx = 0;
         int nIdx = 0;
         std::vector<size_t> nIndices = std::vector<size_t>();
         size_t counter = 0;
 
     public:
-        explicit SparseIter(Tensor *tensor): Iter(tensor) {
+        explicit SparseIter(Tensor *tensor): TensorIter(tensor) {
         }
 
         void start() override {
@@ -76,8 +76,8 @@ namespace Toygrad::Tensor {
         }
 
         bool hasNext() override {
-            return counter < tensor->getShape().getSize() &&
-                   elmIdx < tensor->getShape().root->offset + tensor->getShape().root->getSize();
+            // TODO: detect out-of-bounds elements
+            return counter < tensor->getShape().getSize();
         }
 
         void next() override;
@@ -91,5 +91,5 @@ namespace Toygrad::Tensor {
         }
     };
 
-    std::unique_ptr<Iter> initIter(Tensor *tensor);
+    IterPtr initIter(Tensor *tensor);
 }

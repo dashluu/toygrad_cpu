@@ -9,7 +9,6 @@ set(HEADER FILES
         ops.h
         tensor_indexer.h
         rand_gen.h
-        graph.h
         tensor_iter.h
 )
 

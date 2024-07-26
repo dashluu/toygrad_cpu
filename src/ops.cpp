@@ -43,51 +43,66 @@ namespace Toygrad::Tensor {
     }
 
     void SumOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
         real sum = 0;
 
-        for (operandIter->start(); operandIter->hasNext(); operandIter->next()) {
-            sum += operandIter->curr();
+        for (opIter->start(); opIter->hasNext(); opIter->next()) {
+            sum += opIter->curr();
         }
 
-        resultIter->start();
-        resultIter->curr() = sum;
+        outIter->start();
+        outIter->curr() = sum;
     }
 
     void SumOp::backward() {
         operand->initGrad();
-        operand->grad->addAssign(tensor->grad->mul(1.));
+        IterPtr opGradIter = initIter(operand->grad.get());
+
+        // z = x1+x2+...+xn
+        // dx += 1.
+
+        for (opGradIter->start(); opGradIter->hasNext(); opGradIter->next()) {
+            opGradIter->curr() += 1.;
+        }
     }
 
     void AddOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
-        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), lhsIter->start(), rhsIter->start();
-             resultIter->hasNext();
-             resultIter->next(), lhsIter->next(), rhsIter->next()) {
-            resultIter->curr() = lhsIter->curr() + rhsIter->curr();
+        for (outIter->start(), lhsIter->start(), rhsIter->start();
+             outIter->hasNext();
+             outIter->next(), lhsIter->next(), rhsIter->next()) {
+            outIter->curr() = lhsIter->curr() + rhsIter->curr();
         }
     }
 
     void AddOp::backward() {
         lhs->initGrad();
-        lhs->grad->addAssign(tensor->grad->mul(1.));
         rhs->initGrad();
-        rhs->grad->addAssign(tensor->grad->mul(1.));
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr lhsGradIter = initIter(lhs->grad.get());
+        IterPtr rhsGradIter = initIter(rhs->grad.get());
+
+        for (outGradIter->start(), lhsGradIter->start(), rhsGradIter->start();
+             outGradIter->hasNext();
+             outGradIter->next(), lhsGradIter->next(), rhsGradIter->next()) {
+            lhsGradIter->curr() += outGradIter->curr();
+            rhsGradIter->curr() += outGradIter->curr();
+        }
     }
 
     void AddAssignOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
-        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), lhsIter->start(), rhsIter->start();
-             resultIter->hasNext();
-             resultIter->next(), lhsIter->next(), rhsIter->next()) {
-            resultIter->curr() = lhsIter->curr() + rhsIter->curr();
+        for (outIter->start(), lhsIter->start(), rhsIter->start();
+             outIter->hasNext();
+             outIter->next(), lhsIter->next(), rhsIter->next()) {
+            outIter->curr() = lhsIter->curr() + rhsIter->curr();
         }
     }
 
@@ -96,33 +111,41 @@ namespace Toygrad::Tensor {
     }
 
     void SubOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
-        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), lhsIter->start(), rhsIter->start();
-             resultIter->hasNext();
-             resultIter->next(), lhsIter->next(), rhsIter->next()) {
-            resultIter->curr() = lhsIter->curr() - rhsIter->curr();
+        for (outIter->start(), lhsIter->start(), rhsIter->start();
+             outIter->hasNext();
+             outIter->next(), lhsIter->next(), rhsIter->next()) {
+            outIter->curr() = lhsIter->curr() - rhsIter->curr();
         }
     }
 
     void SubOp::backward() {
         lhs->initGrad();
-        lhs->grad->addAssign(tensor->grad->mul(1.));
         rhs->initGrad();
-        rhs->grad->addAssign(tensor->grad->mul(-1.));
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr lhsGradIter = initIter(lhs->grad.get());
+        IterPtr rhsGradIter = initIter(rhs->grad.get());
+
+        for (outGradIter->start(), lhsGradIter->start(), rhsGradIter->start();
+             outGradIter->hasNext();
+             outGradIter->next(), lhsGradIter->next(), rhsGradIter->next()) {
+            lhsGradIter->curr() += outGradIter->curr();
+            rhsGradIter->curr() -= outGradIter->curr();
+        }
     }
 
     void SubAssignOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
-        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), lhsIter->start(), rhsIter->start();
-             resultIter->hasNext();
-             resultIter->next(), lhsIter->next(), rhsIter->next()) {
-            resultIter->curr() = lhsIter->curr() - rhsIter->curr();
+        for (outIter->start(), lhsIter->start(), rhsIter->start();
+             outIter->hasNext();
+             outIter->next(), lhsIter->next(), rhsIter->next()) {
+            outIter->curr() = lhsIter->curr() - rhsIter->curr();
         }
     }
 
@@ -131,33 +154,47 @@ namespace Toygrad::Tensor {
     }
 
     void MulOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
-        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), lhsIter->start(), rhsIter->start();
-             resultIter->hasNext();
-             resultIter->next(), lhsIter->next(), rhsIter->next()) {
-            resultIter->curr() = lhsIter->curr() * rhsIter->curr();
+        for (outIter->start(), lhsIter->start(), rhsIter->start();
+             outIter->hasNext();
+             outIter->next(), lhsIter->next(), rhsIter->next()) {
+            outIter->curr() = lhsIter->curr() * rhsIter->curr();
         }
     }
 
     void MulOp::backward() {
         lhs->initGrad();
-        lhs->grad->addAssign(tensor->grad->mul(rhs));
         rhs->initGrad();
-        rhs->grad->addAssign(tensor->grad->mul(lhs));
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr lhsGradIter = initIter(lhs->grad.get());
+        IterPtr rhsIter = initIter(rhs.get());
+        IterPtr rhsGradIter = initIter(rhs->grad.get());
+
+        // z = x*y
+        // dx += dz*y
+        // dy += dx*x
+
+        for (outGradIter->start(), lhsIter->next(), lhsGradIter->start(), rhsIter->start(), rhsGradIter->start();
+             outGradIter->hasNext();
+             outGradIter->next(), lhsIter->next(), lhsGradIter->next(), rhsIter->next(), rhsGradIter->next()) {
+            lhsGradIter->curr() += outGradIter->curr() * rhsIter->curr();
+            rhsGradIter->curr() += outGradIter->curr() * lhsIter->curr();
+        }
     }
 
     void MulAssignOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
-        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), lhsIter->start(), rhsIter->start();
-             resultIter->hasNext();
-             resultIter->next(), lhsIter->next(), rhsIter->next()) {
-            resultIter->curr() = lhsIter->curr() * rhsIter->curr();
+        for (outIter->start(), lhsIter->start(), rhsIter->start();
+             outIter->hasNext();
+             outIter->next(), lhsIter->next(), rhsIter->next()) {
+            outIter->curr() = lhsIter->curr() * rhsIter->curr();
         }
     }
 
@@ -166,37 +203,47 @@ namespace Toygrad::Tensor {
     }
 
     void DivOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
-        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), lhsIter->start(), rhsIter->start();
-             resultIter->hasNext();
-             resultIter->next(), lhsIter->next(), rhsIter->next()) {
-            resultIter->curr() = lhsIter->curr() / rhsIter->curr();
+        for (outIter->start(), lhsIter->start(), rhsIter->start();
+             outIter->hasNext();
+             outIter->next(), lhsIter->next(), rhsIter->next()) {
+            outIter->curr() = lhsIter->curr() / rhsIter->curr();
         }
     }
 
     void DivOp::backward() {
         lhs->initGrad();
-        // z = x/y
-        // dx = dz * (1/y)
-        lhs->grad->addAssign(tensor->grad->mul(rhs->recip()));
         rhs->initGrad();
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr lhsGradIter = initIter(lhs->grad.get());
+        IterPtr rhsIter = initIter(rhs.get());
+        IterPtr rhsGradIter = initIter(rhs->grad.get());
+
         // z = x/y
-        // dy = dz * (-x / y^2)
-        rhs->grad->addAssign(tensor->grad->mul(lhs->neg()->div(rhs->sq())));
+        // dx += dz * (1/y)
+        // dy += dz * (-x / y^2)
+
+        for (outGradIter->start(), lhsIter->next(), lhsGradIter->start(), rhsIter->start(), rhsGradIter->start();
+             outGradIter->hasNext();
+             outGradIter->next(), lhsIter->next(), lhsGradIter->next(), rhsIter->next(), rhsGradIter->next()) {
+            lhsGradIter->curr() += outGradIter->curr() / rhsIter->curr();
+            rhsGradIter->curr() += outGradIter->curr() * -lhsIter->curr() / (rhsIter->curr() * rhsIter->curr());
+        }
     }
 
     void DivAssignOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
-        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), lhsIter->start(), rhsIter->start();
-             resultIter->hasNext();
-             resultIter->next(), lhsIter->next(), rhsIter->next()) {
-            resultIter->curr() = lhsIter->curr() / rhsIter->curr();
+        for (outIter->start(), lhsIter->start(), rhsIter->start();
+             outIter->hasNext();
+             outIter->next(), lhsIter->next(), rhsIter->next()) {
+            outIter->curr() = lhsIter->curr() / rhsIter->curr();
         }
     }
 
@@ -205,171 +252,210 @@ namespace Toygrad::Tensor {
     }
 
     void ExpOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
 
-        for (resultIter->start(), operandIter->start();
-             resultIter->hasNext();
-             resultIter->next(), operandIter->next()) {
-            resultIter->curr() = std::exp(operandIter->curr());
+        for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
+            outIter->curr() = std::exp(opIter->curr());
         }
     }
 
     void ExpOp::backward() {
         operand->initGrad();
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr opIter = initIter(operand.get());
+        IterPtr opGradIter = initIter(operand->grad.get());
+
         // z = e^x
-        // dx = dz * e^x
-        operand->grad->addAssign(tensor->grad->mul(operand->exp()));
+        // dx += dz * e^x
+
+        for (outGradIter->start(), opIter->next(), opGradIter->start();
+             outGradIter->hasNext();
+             outGradIter->next(), opIter->next(), opGradIter->next()) {
+            opGradIter->curr() += outGradIter->curr() * std::exp(opIter->curr());
+        }
     }
 
     void RecipOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
 
-        for (resultIter->start(), operandIter->start();
-             resultIter->hasNext();
-             resultIter->next(), operandIter->next()) {
-            resultIter->curr() = c / operandIter->curr();
+        for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
+            outIter->curr() = c / opIter->curr();
         }
     }
 
     void RecipOp::backward() {
         operand->initGrad();
+
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr opIter = initIter(operand.get());
+        IterPtr opGradIter = initIter(operand->grad.get());
+
         // z = c / x
-        // dx = dz * (-c / x^2)
-        operand->addAssign(tensor->grad->mul(operand->sq()->recip(-c)));
+        // dx += dz * (-c / x^2)
+
+        for (outGradIter->start(), opIter->next(), opGradIter->start();
+             outGradIter->hasNext();
+             outGradIter->next(), opIter->next(), opGradIter->next()) {
+            opGradIter->curr() += outGradIter->curr() * -c / (opIter->curr() * opIter->curr());
+        }
     }
 
     void NegOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
 
-        for (resultIter->start(), operandIter->start();
-             resultIter->hasNext();
-             resultIter->next(), operandIter->next()) {
-            resultIter->curr() = -operandIter->curr();
+        for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
+            outIter->curr() = -opIter->curr();
         }
     }
 
     void NegOp::backward() {
         operand->initGrad();
-        operand->addAssign(tensor->grad->mul(-1.));
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr opGradIter = initIter(operand->grad.get());
+
+        // z = -x
+        // dx += -dz
+
+        for (outGradIter->start(), opGradIter->start();
+             outGradIter->hasNext();
+             outGradIter->next(), opGradIter->next()) {
+            opGradIter->curr() -= outGradIter->curr();
+        }
     }
 
     void SqOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
 
-        for (resultIter->start(), operandIter->start();
-             resultIter->hasNext();
-             resultIter->next(), operandIter->next()) {
-            resultIter->curr() = operandIter->curr() * operandIter->curr();
+        for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
+            outIter->curr() = opIter->curr() * opIter->curr();
         }
     }
 
     void SqOp::backward() {
         operand->initGrad();
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr opIter = initIter(operand.get());
+        IterPtr opGradIter = initIter(operand->grad.get());
+
         // z = x^2
-        // dx = dz * 2x
-        operand->addAssign(tensor->grad->mul(operand->mul(2)));
+        // dx += dz * 2x
+
+        for (outGradIter->start(), opIter->next(), opGradIter->start();
+             outGradIter->hasNext();
+             outGradIter->next(), opIter->next(), opGradIter->next()) {
+            opGradIter->curr() += outGradIter->curr() * 2 * opIter->curr();
+        }
     }
 
     void EqOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
-        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), lhsIter->start(), rhsIter->start();
-             resultIter->hasNext();
-             resultIter->next(), lhsIter->next(), rhsIter->next()) {
-            resultIter->curr() = static_cast<real>(lhsIter->curr() == rhsIter->curr());
+        for (outIter->start(), lhsIter->start(), rhsIter->start();
+             outIter->hasNext();
+             outIter->next(), lhsIter->next(), rhsIter->next()) {
+            outIter->curr() = static_cast<real>(lhsIter->curr() == rhsIter->curr());
         }
     }
 
     void NeqOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
-        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), lhsIter->start(), rhsIter->start();
-             resultIter->hasNext();
-             resultIter->next(), lhsIter->next(), rhsIter->next()) {
-            resultIter->curr() = static_cast<real>(lhsIter->curr() != rhsIter->curr());
+        for (outIter->start(), lhsIter->start(), rhsIter->start();
+             outIter->hasNext();
+             outIter->next(), lhsIter->next(), rhsIter->next()) {
+            outIter->curr() = static_cast<real>(lhsIter->curr() != rhsIter->curr());
         }
     }
 
     void LessOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
-        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), lhsIter->start(), rhsIter->start();
-             resultIter->hasNext();
-             resultIter->next(), lhsIter->next(), rhsIter->next()) {
-            resultIter->curr() = static_cast<real>(lhsIter->curr() < rhsIter->curr());
+        for (outIter->start(), lhsIter->start(), rhsIter->start();
+             outIter->hasNext();
+             outIter->next(), lhsIter->next(), rhsIter->next()) {
+            outIter->curr() = static_cast<real>(lhsIter->curr() < rhsIter->curr());
         }
     }
 
     void GreaterOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
-        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), lhsIter->start(), rhsIter->start();
-             resultIter->hasNext();
-             resultIter->next(), lhsIter->next(), rhsIter->next()) {
-            resultIter->curr() = static_cast<real>(lhsIter->curr() > rhsIter->curr());
+        for (outIter->start(), lhsIter->start(), rhsIter->start();
+             outIter->hasNext();
+             outIter->next(), lhsIter->next(), rhsIter->next()) {
+            outIter->curr() = static_cast<real>(lhsIter->curr() > rhsIter->curr());
         }
     }
 
     void LeqOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
-        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), lhsIter->start(), rhsIter->start();
-             resultIter->hasNext();
-             resultIter->next(), lhsIter->next(), rhsIter->next()) {
-            resultIter->curr() = static_cast<real>(lhsIter->curr() <= rhsIter->curr());
+        for (outIter->start(), lhsIter->start(), rhsIter->start();
+             outIter->hasNext();
+             outIter->next(), lhsIter->next(), rhsIter->next()) {
+            outIter->curr() = static_cast<real>(lhsIter->curr() <= rhsIter->curr());
         }
     }
 
     void GeqOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> lhsIter = initIter(lhs.get());
-        std::unique_ptr<Iter> rhsIter = initIter(rhs.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
 
-        for (resultIter->start(), lhsIter->start(), rhsIter->start();
-             resultIter->hasNext();
-             resultIter->next(), lhsIter->next(), rhsIter->next()) {
-            resultIter->curr() = static_cast<real>(lhsIter->curr() >= rhsIter->curr());
+        for (outIter->start(), lhsIter->start(), rhsIter->start();
+             outIter->hasNext();
+             outIter->next(), lhsIter->next(), rhsIter->next()) {
+            outIter->curr() = static_cast<real>(lhsIter->curr() >= rhsIter->curr());
         }
     }
 
     void ReluOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
 
-        for (resultIter->start(), operandIter->start();
-             resultIter->hasNext();
-             resultIter->next(), operandIter->next()) {
-            resultIter->curr() = static_cast<real>(operandIter->curr() > 0.);
+        for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
+            outIter->curr() = static_cast<real>(opIter->curr() > 0.);
         }
     }
 
     void ReluOp::backward() {
         operand->initGrad();
-        operand->grad->addAssign(tensor->grad->mul(operand->gt(0.)));
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr opIter = initIter(operand.get());
+        IterPtr opGradIter = initIter(operand->grad.get());
+
+        // z = max(x, 0.)
+        // dx += dz * 1 if x > 0. else 0
+
+        for (outGradIter->start(), opIter->next(), opGradIter->start();
+             outGradIter->hasNext();
+             outGradIter->next(), opIter->next(), opGradIter->next()) {
+            opGradIter->curr() += outGradIter->curr() * static_cast<real>(opIter->curr() > 0.);
+        }
     }
 
     void CopyOp::forward() {
-        std::unique_ptr<Iter> resultIter = initIter(tensor);
-        std::unique_ptr<Iter> operandIter = initIter(operand.get());
+        IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
 
-        for (resultIter->start(), operandIter->start();
-             resultIter->hasNext();
-             resultIter->next(), operandIter->next()) {
-            resultIter->curr() = operandIter->curr();
+        for (outIter->start(), opIter->start();
+             outIter->hasNext();
+             outIter->next(), opIter->next()) {
+            outIter->curr() = opIter->curr();
         }
     }
 }
