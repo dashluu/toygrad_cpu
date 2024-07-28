@@ -16,7 +16,7 @@ namespace Toygrad::Tensor {
     class CGraph;
     class TensorIter;
     class Tensor;
-    class TensorIndexer;
+    class TensorAccessor;
     struct Op;
     struct UnOp;
     struct BinOp;

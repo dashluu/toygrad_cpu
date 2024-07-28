@@ -2,7 +2,7 @@
 
 #include "tensor.h"
 #include "ops.h"
-#include "tensor_indexer.h"
+#include "tensor_accessor.h"
 #include "tensor_iter.h"
 #include "cgraph.h"
 
@@ -29,12 +29,20 @@ namespace Toygrad::Tensor {
     }
 
     Tensor::~Tensor() {
+        std::cout << "Destroyed tensor " << id << "..." << std::endl;
         delete op;
     }
 
     std::ostream &operator<<(std::ostream &stream, Tensor &tensor) {
         IterPtr iter = initIter(&tensor);
-        auto &sst = tensor.shape.sst;
+        std::vector<size_t> subsize(tensor.shape.getNumDims());
+        size_t tmp = 1;
+
+        for (int i = subsize.size() - 1; i >= 0; i--) {
+            tmp *= tensor.shape.view[i];
+            subsize[i] = tmp;
+        }
+
         iter->start();
         bool flag = iter->hasNext();
 
@@ -54,8 +62,8 @@ namespace Toygrad::Tensor {
             stream << iter->curr();
             size_t close = 0;
 
-            for (int i = sst.size() - 2; i >= 0; i--) {
-                if (iter->count() % sst[i] == 0) {
+            for (int i = subsize.size() - 1; i >= 0; i--) {
+                if (iter->count() % subsize[i] == 0) {
                     stream << "]";
                     close++;
                 }
@@ -77,24 +85,23 @@ namespace Toygrad::Tensor {
             }
         } while (flag);
 
-        stream << "]";
         return stream;
     }
 
     TensorPtr Tensor::atHelper(const std::vector<size_t> &idx) {
-        assert(str_assert(shape.getNumDims() > idx.size(), AssertMessage::indexMultipleDimsOnly));
+        assert(str_assert(shape.getNumDims() > idx.size(), AssertMessage::indexMultidimsOnly));
 
         // Index must stay within bounds
         for (size_t i = 0; i < idx.size(); i++) {
             assert(str_assert(idx[i] < shape.view[i], AssertMessage::indexOutOfBounds));
         }
 
-        TensorIndexer indexer(this);
+        TensorAccessor indexer(this);
         return indexer.at(idx);
     }
 
     bool Tensor::isContiguous() const {
-        return std::ranges::all_of(shape.rng.begin(), shape.rng.end(),
+        return std::ranges::all_of(shape.ranges.begin(), shape.ranges.end(),
                                    [](const Range &range) { return range.step > 1; });
     }
 
@@ -103,9 +110,21 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::at(const std::vector<Range> &ranges) {
-        assert(str_assert(shape.getNumDims() >= ranges.size(), AssertMessage::indexMultipleDimsOnly));
-        TensorIndexer indexer(this);
-        return indexer.at(ranges);
+        assert(str_assert(shape.getNumDims() >= ranges.size(), AssertMessage::indexMultidimsOnly));
+        std::vector<Range> newRanges = ranges;
+
+        // Turn invalid ranges into valid ones
+        for (size_t i = 0; i < newRanges.size(); i++) {
+            if (newRanges[i].beg >= shape.view[i]) {
+                newRanges[i].beg = 0;
+                newRanges[i].end = 0;
+            } else if (newRanges[i].end > shape.view[i]) {
+                newRanges[i].end = shape.view[i];
+            }
+        }
+
+        TensorAccessor indexer(this);
+        return indexer.at(newRanges);
     }
 
     TensorPtr Tensor::arange(const Shape &shape, real start, real step) {
@@ -409,6 +428,39 @@ namespace Toygrad::Tensor {
         outTensor->op = new SumOp(shared_from_this(), outTensor.get());
         outTensor->op->forward();
         return outTensor;
+    }
+
+    TensorPtr Tensor::perm(const std::vector<size_t> &shapePerm) {
+        assert(str_assert(shapePerm.size() == shape.getNumDims(), AssertMessage::invalidShapePerm));
+        std::vector<bool> flags(shape.getNumDims());
+
+        for (size_t i: shapePerm) {
+            assert(str_assert(i < shape.getNumDims(), AssertMessage::invalidShapePerm));
+            flags[i] = true;
+        }
+
+        for (bool i: flags) {
+            assert(str_assert(i, AssertMessage::invalidShapePerm));
+        }
+
+        Shape permShape(shape.offset, shape.view, shape.strides, shapePerm);
+        return std::make_shared<Tensor>(permShape, vec);
+    }
+
+    TensorPtr Tensor::T() {
+        std::vector<size_t> shapePerm(shape.getNumDims());
+
+        for (size_t i = 0; i < shape.getNumDims(); i++) {
+            shapePerm[i] = shape.getNumDims() - 1 - i;
+        }
+
+        return perm(shapePerm);
+    }
+
+    bool Tensor::isEmpty() {
+        IterPtr iter = initIter(this);
+        iter->start();
+        return !iter->hasNext();
     }
 
     void Tensor::backward() {

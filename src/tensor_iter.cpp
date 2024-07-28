@@ -6,39 +6,35 @@
 
 namespace Toygrad::Tensor {
     void SparseIter::next() {
+        counter++;
+
+        if (counter > tensor->getShape().getSize()) {
+            return;
+        }
+
         auto &shape = tensor->getShape();
-        auto &dst = shape.dst;
-        auto &sst = shape.sst;
-        bool flag = false;
+        bool flag;
 
-        while (nIdx > 0 && !flag) {
-            auto tmp = shape.parent->offset;
-
-            for (size_t i = 0; i < nIdx; i++) {
-                tmp += shape.rng[i].beg * shape.parent->dst[i];
-            }
-
-            flag = nIndices[nIdx] + 1 < sst[nIdx - 1] &&
-                   offset + (nIndices[nIdx] + 1) * dst[nIdx] < tmp + shape.parent->dst[nIdx - 1];
+        do {
+            flag = rotator[ridx] + 1 < shape.view[ridx];
 
             if (!flag) {
-                nIdx--;
+                ridx--;
             }
-        }
+        } while (!flag);
 
-        nIndices[nIdx]++;
+        rotator[ridx]++;
         elmIdx = offset;
 
-        for (size_t i = nIdx + 1; i < nIndices.size(); i++) {
-            nIndices[i] = 0;
+        for (size_t i = ridx + 1; i < rotator.size(); i++) {
+            rotator[i] = 0;
         }
 
-        for (size_t i = 0; i < nIndices.size(); i++) {
-            elmIdx += nIndices[i] * tensor->getShape().dst[i];
+        for (size_t i = 0; i < rotator.size(); i++) {
+            elmIdx += rotator[i] * tensor->getShape().strides[i];
         }
 
-        nIdx = nIndices.size() - 1;
-        counter++;
+        ridx = rotator.size() - 1;
     }
 
     IterPtr initIter(Tensor *tensor) {

@@ -44,7 +44,7 @@ namespace Toygrad::Tensor {
         friend struct LeqOp;
         friend struct GeqOp;
         friend struct ReluOp;
-        friend class TensorIndexer;
+        friend class TensorAccessor;
 
         Tensor();
 
@@ -178,6 +178,12 @@ namespace Toygrad::Tensor {
         TensorPtr reshape(const Shape &shape);
 
         TensorPtr sum();
+
+        TensorPtr perm(const std::vector<size_t> &shapePerm);
+
+        TensorPtr T();
+
+        bool isEmpty();
 
         void backward();
     };

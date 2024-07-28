@@ -1,72 +1,100 @@
 #pragma once
 
 #include <vector>
+#include <numeric>
+
 #include "common.h"
 
 namespace Toygrad::Tensor {
     struct Shape {
     private:
         friend class Tensor;
-        friend class TensorIndexer;
+        friend class TensorAccessor;
 
         Shape() = default;
 
-        void initSt(std::vector<size_t> &st) {
+        void defStrides() {
             // Update strides
-            st.resize(view.size());
+            strides.resize(view.size());
             size_t stride = 1;
 
             for (int i = view.size() - 2; i >= 0; i--) {
                 stride *= view[i + 1];
-                st[i] = stride;
+                strides[i] = stride;
             }
 
-            st[view.size() - 1] = 1;
+            strides[view.size() - 1] = 1;
         }
 
-        void initRng() {
-            rng.resize(view.size());
+        void defRanges() {
+            ranges.resize(view.size());
 
             for (size_t i = 0; i < view.size(); i++) {
-                rng[i] = {0, view[i], 1};
+                ranges[i] = {0, view[i], 1};
+            }
+        }
+
+        void initPerm(const std::vector<size_t> &perm) {
+            auto tmp = perm;
+
+            for (size_t i = 0; i < perm.size(); i++) {
+                std::swap(ranges[0], ranges[tmp[0]]);
+                std::swap(view[0], view[tmp[0]]);
+                std::swap(strides[0], strides[tmp[0]]);
+                std::swap(tmp[0], tmp[tmp[0]]);
             }
         }
 
     public:
-        Shape *parent = nullptr;
-        std::vector<Range> rng;
+        std::vector<Range> ranges;
         size_t offset = 0;
         std::vector<size_t> view;
-        // Dynamic strides
-        std::vector<size_t> dst;
-        // Static strides
-        std::vector<size_t> sst;
+        std::vector<size_t> strides;
 
-        Shape(Shape *parent, const std::vector<Range> &rng, size_t offset,
-              const std::vector<size_t> &view): parent(parent), rng(rng), offset(offset), view(view) {
-            initSt(dst);
-            sst = dst;
+        Shape(const std::vector<Range> &rng, size_t offset, const std::vector<size_t> &view,
+              const std::vector<size_t> &str, const std::vector<size_t> &perm): ranges(rng), offset(offset), view(view),
+            strides(str) {
+            initPerm(perm);
         }
 
-        Shape(Shape *root, size_t offset, const std::vector<size_t> &view): parent(root), offset(offset), view(view) {
-            initSt(dst);
-            sst = dst;
-            initRng();
+        Shape(const std::vector<Range> &rng, size_t offset, const std::vector<size_t> &view,
+              const std::vector<size_t> &perm): ranges(rng), offset(offset), view(view) {
+            defStrides();
+            initPerm(perm);
         }
 
-        Shape(size_t offset, const std::vector<size_t> &view): Shape(this, offset, view) {
+        Shape(const std::vector<Range> &rng, size_t offset, const std::vector<size_t> &view): ranges(rng),
+            offset(offset),
+            view(view) {
+            defStrides();
+        }
+
+        Shape(size_t offset, const std::vector<size_t> &view, const std::vector<size_t> &str,
+              const std::vector<size_t> &perm): offset(offset), view(view), strides(str) {
+            defRanges();
+            initPerm(perm);
+        }
+
+        Shape(size_t offset, const std::vector<size_t> &view, const std::vector<size_t> &perm): offset(offset),
+            view(view) {
+            defStrides();
+            defRanges();
+            initPerm(perm);
+        }
+
+        Shape(size_t offset, const std::vector<size_t> &view): offset(offset), view(view) {
+            defStrides();
+            defRanges();
         }
 
         explicit Shape(const std::vector<size_t> &view): Shape(0, view) {
         }
 
         Shape(const Shape &shape) {
-            parent = shape.parent;
-            rng = shape.rng;
+            ranges = shape.ranges;
             offset = shape.offset;
             view = shape.view;
-            dst = shape.dst;
-            sst = shape.sst;
+            strides = shape.strides;
         }
 
         bool operator==(const Shape &rhs) const {
@@ -82,12 +110,10 @@ namespace Toygrad::Tensor {
                 return *this;
             }
 
-            parent = rhs.parent;
-            rng = rhs.rng;
+            ranges = rhs.ranges;
             offset = rhs.offset;
             view = rhs.view;
-            dst = rhs.dst;
-            sst = rhs.sst;
+            strides = rhs.strides;
             return *this;
         }
 

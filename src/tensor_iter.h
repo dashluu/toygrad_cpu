@@ -59,25 +59,26 @@ namespace Toygrad::Tensor {
 
     class SparseIter : public TensorIter {
         size_t elmIdx = 0;
-        int nIdx = 0;
-        std::vector<size_t> nIndices = std::vector<size_t>();
+        int ridx = 0;
+        std::vector<size_t> rotator = std::vector<size_t>();
         size_t counter = 0;
 
     public:
         explicit SparseIter(const Tensor *tensor): TensorIter(tensor) {
+            rotator.resize(tensor->getShape().getNumDims());
         }
 
         void start() override {
             offset = tensor->getShape().offset;
             elmIdx = offset;
-            nIndices.resize(tensor->getShape().getNumDims());
-            nIdx = nIndices.size() - 1;
-            counter = 0;
+            std::ranges::fill(rotator.begin(), rotator.end(), 0);
+            ridx = rotator.size() - 1;
+            counter = 1;
         }
 
         bool hasNext() override {
             // TODO: detect out-of-bounds elements
-            return counter < tensor->getShape().getSize();
+            return counter <= tensor->getShape().getSize();
         }
 
         void next() override;
@@ -87,7 +88,7 @@ namespace Toygrad::Tensor {
         }
 
         size_t count() override {
-            return counter + 1;
+            return counter;
         }
     };
 

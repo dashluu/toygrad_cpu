@@ -7,11 +7,11 @@
 #include "tensor.h"
 
 namespace Toygrad::Tensor {
-    class TensorIndexer {
+    class TensorAccessor {
         Tensor *tensor;
 
     public:
-        explicit TensorIndexer(Tensor *tensor): tensor(tensor) {
+        explicit TensorAccessor(Tensor *tensor): tensor(tensor) {
         }
 
         TensorPtr at(const std::vector<size_t> &idx);
