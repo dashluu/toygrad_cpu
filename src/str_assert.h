@@ -15,6 +15,7 @@ namespace Toygrad::Tensor {
         static const std::string shapesMismatched;
         static const std::string matmulOnLessThan2d;
         static const std::string invalidShapePerm;
+        static const std::string invalidDim;
     };
 
     inline bool str_assert(bool assertion, const std::string &message) {

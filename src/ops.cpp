@@ -52,26 +52,50 @@ namespace Toygrad::Tensor {
 
     void SumOp::forward() {
         IterPtr outIter = initIter(tensor);
-        IterPtr opIter = initIter(operand.get());
-        real sum = 0;
 
-        for (opIter->start(); opIter->hasNext(); opIter->next()) {
-            sum += opIter->curr();
+        if (dim == -1) {
+            IterPtr lhsIter = initIter(lhs.get());
+            real sum = 0;
+
+            for (lhsIter->start(); lhsIter->hasNext(); lhsIter->next()) {
+                sum += lhsIter->curr();
+            }
+
+            outIter->start();
+            outIter->curr() = sum;
+        } else {
+            IterPtr rhsIter = initIter(rhs.get());
+            rhsIter->start();
+            outIter->start();
+            real sum = 0.;
+
+            while (rhsIter->hasNext()) {
+                if (rhsIter->count() > rhs->shape[rhs->shape.getNumDims() - 1] &&
+                    (rhsIter->count() - 1) % rhs->shape[rhs->shape.getNumDims() - 1] == 0) {
+                    outIter->curr() = sum;
+                    outIter->next();
+                    sum = rhsIter->curr();
+                } else {
+                    sum += rhsIter->curr();
+                    // std::cout << rhsIter->curr() << " " << rhsIter->count() << std::endl;
+                }
+
+                rhsIter->next();
+            }
+
+            outIter->curr() = sum;
         }
-
-        outIter->start();
-        outIter->curr() = sum;
     }
 
     void SumOp::backward() {
-        operand->initGrad();
-        IterPtr opGradIter = initIter(operand->grad.get());
+        lhs->initGrad();
+        IterPtr lhsGradIter = initIter(lhs->grad.get());
 
         // z = x1+x2+...+xn
         // dx += 1.
 
-        for (opGradIter->start(); opGradIter->hasNext(); opGradIter->next()) {
-            opGradIter->curr() += 1.;
+        for (lhsGradIter->start(); lhsGradIter->hasNext(); lhsGradIter->next()) {
+            lhsGradIter->curr() += 1.;
         }
     }
 

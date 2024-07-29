@@ -177,7 +177,7 @@ namespace Toygrad::Tensor {
 
         TensorPtr reshape(const Shape &shape);
 
-        TensorPtr sum();
+        TensorPtr sum(int dim = -1);
 
         TensorPtr perm(const std::vector<size_t> &shapePerm);
 

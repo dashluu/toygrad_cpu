@@ -36,12 +36,17 @@ namespace Toygrad::Tensor {
 
         void initPerm(const std::vector<size_t> &perm) {
             auto tmp = perm;
+            size_t j = 0;
 
             for (size_t i = 0; i < perm.size(); i++) {
-                std::swap(ranges[0], ranges[tmp[0]]);
-                std::swap(view[0], view[tmp[0]]);
-                std::swap(strides[0], strides[tmp[0]]);
-                std::swap(tmp[0], tmp[tmp[0]]);
+                if (j == tmp[j]) j++;
+
+                if (j < perm.size()) {
+                    std::swap(ranges[j], ranges[tmp[j]]);
+                    std::swap(view[j], view[tmp[j]]);
+                    std::swap(strides[j], strides[tmp[j]]);
+                    std::swap(tmp[j], tmp[tmp[j]]);
+                }
             }
         }
 

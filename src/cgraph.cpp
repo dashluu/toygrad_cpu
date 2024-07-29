@@ -18,13 +18,13 @@ namespace Toygrad::Tensor {
             if (tensor->op->opType == OpType::UN_OP) {
                 auto op = dynamic_cast<UnOp *>(tensor->op);
                 auto operand = op->operand;
-                stack.push_back(operand);
+                if (operand) stack.push_back(operand);
             } else if (tensor->op->opType == OpType::BIN_OP) {
                 auto op = dynamic_cast<BinOp *>(tensor->op);
                 auto lhs = op->lhs;
                 auto rhs = op->rhs;
-                stack.push_back(lhs);
-                stack.push_back(rhs);
+                if (lhs) stack.push_back(lhs);
+                if (rhs) stack.push_back(rhs);
             }
         }
     }

@@ -54,8 +54,8 @@ namespace Toygrad::Tensor {
         BinOp(OpName opName, const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): Op(OpType::BIN_OP, opName,
                 tensor),
             lhs(lhs), rhs(rhs) {
-            lhs->edges.push_back(tensor);
-            rhs->edges.push_back(tensor);
+            if (lhs) lhs->edges.push_back(tensor);
+            if (rhs) rhs->edges.push_back(tensor);
         }
     };
 
@@ -114,8 +114,12 @@ namespace Toygrad::Tensor {
         void forward() override;
     };
 
-    struct SumOp final : UnOp {
-        SumOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::SUM, operand, tensor) {
+    // Mask it as a binary op although it makes sense for Sum to be unary op
+    struct SumOp final : BinOp {
+        int dim;
+
+        SumOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor,
+              int dim): BinOp(OpName::SUM, lhs, rhs, tensor), dim(dim) {
         }
 
         void forward() override;

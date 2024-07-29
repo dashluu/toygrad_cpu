@@ -423,9 +423,33 @@ namespace Toygrad::Tensor {
         return outTensor;
     }
 
-    TensorPtr Tensor::sum() {
-        auto outTensor = std::make_shared<Tensor>(Shape({1}));
-        outTensor->op = new SumOp(shared_from_this(), outTensor.get());
+    TensorPtr Tensor::sum(int dim) {
+        assert(str_assert(dim >= -1 && dim < static_cast<int>(shape.getNumDims()), AssertMessage::invalidDim));
+        TensorPtr outTensor;
+
+        if (dim == -1) {
+            outTensor = std::make_shared<Tensor>(Shape({1}));
+            outTensor->op = new SumOp(shared_from_this(), nullptr, outTensor.get(), dim);
+        } else {
+            Shape sumShape;
+            sumShape.offset = 0;
+            std::vector<size_t> opPerm;
+
+            for (size_t i = 0; i < shape.getNumDims(); i++) {
+                if (i != dim) {
+                    sumShape.view.push_back(shape[i]);
+                    opPerm.push_back(i);
+                }
+            }
+
+            sumShape.defRanges();
+            sumShape.defStrides();
+            opPerm.push_back(dim);
+            outTensor = std::make_shared<Tensor>(sumShape);
+            auto opTensor = perm(opPerm);
+            outTensor->op = new SumOp(shared_from_this(), opTensor, outTensor.get(), dim);
+        }
+
         outTensor->op->forward();
         return outTensor;
     }
