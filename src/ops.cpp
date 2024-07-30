@@ -77,7 +77,6 @@ namespace Toygrad::Tensor {
                     sum = rhsIter->curr();
                 } else {
                     sum += rhsIter->curr();
-                    // std::cout << rhsIter->curr() << " " << rhsIter->count() << std::endl;
                 }
 
                 rhsIter->next();
@@ -374,12 +373,37 @@ namespace Toygrad::Tensor {
         IterPtr opGradIter = initIter(operand->grad.get());
 
         // z = x^2
-        // dx += dz * 2x
+        // dx += dz * 2 * x
 
         for (outGradIter->start(), opIter->next(), opGradIter->start();
              outGradIter->hasNext();
              outGradIter->next(), opIter->next(), opGradIter->next()) {
             opGradIter->curr() += outGradIter->curr() * 2 * opIter->curr();
+        }
+    }
+
+    void SqrtOp::forward() {
+        IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
+
+        for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
+            outIter->curr() = std::sqrtf(opIter->curr());
+        }
+    }
+
+    void SqrtOp::backward() {
+        operand->initGrad();
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr opIter = initIter(operand.get());
+        IterPtr opGradIter = initIter(operand->grad.get());
+
+        // z = sqrt(x)
+        // dx += dz * 1 / (2 * sqrt(x))
+
+        for (outGradIter->start(), opIter->next(), opGradIter->start();
+             outGradIter->hasNext();
+             outGradIter->next(), opIter->next(), opGradIter->next()) {
+            opGradIter->curr() += outGradIter->curr() / (2 * std::sqrtf(opIter->curr()));
         }
     }
 

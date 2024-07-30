@@ -14,7 +14,7 @@ namespace Toygrad::Tensor {
 
     enum class OpName {
         INDEX, CONST, ARANGE, FROM_ARR, RANDINT, RANDN,
-        ADD, SUB, MUL, DIV, EXP, RECIP, NEG, SQ,
+        ADD, SUB, MUL, DIV, EXP, RECIP, NEG, SQ, SQRT,
         ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN,
         EQ, NEQ, LESS, GREATER, LEQ, GEQ,
         RELU, SUM,
@@ -43,6 +43,7 @@ namespace Toygrad::Tensor {
 
         UnOp(OpName opName, const TensorPtr &operand, Tensor *tensor): Op(OpType::UN_OP, opName, tensor),
                                                                        operand(operand) {
+            // operand is never null
             operand->edges.push_back(tensor);
         }
     };
@@ -52,8 +53,8 @@ namespace Toygrad::Tensor {
         TensorPtr rhs;
 
         BinOp(OpName opName, const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): Op(OpType::BIN_OP, opName,
-                tensor),
-            lhs(lhs), rhs(rhs) {
+                tensor), lhs(lhs), rhs(rhs) {
+            // lhs or rhs can be null depending on the op
             if (lhs) lhs->edges.push_back(tensor);
             if (rhs) rhs->edges.push_back(tensor);
         }
@@ -234,6 +235,15 @@ namespace Toygrad::Tensor {
 
     struct SqOp final : UnOp {
         explicit SqOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::SQ, operand, tensor) {
+        }
+
+        void forward() override;
+
+        void backward() override;
+    };
+
+    struct SqrtOp final : UnOp {
+        explicit SqrtOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::SQRT, operand, tensor) {
         }
 
         void forward() override;

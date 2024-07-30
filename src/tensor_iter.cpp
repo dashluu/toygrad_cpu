@@ -6,9 +6,9 @@
 
 namespace Toygrad::Tensor {
     void SparseIter::next() {
-        counter++;
+        state.counter++;
 
-        if (counter > tensor->getShape().getSize()) {
+        if (state.counter > tensor->getShape().getSize()) {
             return;
         }
 
@@ -16,25 +16,25 @@ namespace Toygrad::Tensor {
         bool flag;
 
         do {
-            flag = rotator[ridx] + 1 < shape.view[ridx];
+            flag = state.rotator[state.ridx] + 1 < shape.view[state.ridx];
 
             if (!flag) {
-                ridx--;
+                state.ridx--;
             }
         } while (!flag);
 
-        rotator[ridx]++;
-        elmIdx = offset;
+        state.rotator[state.ridx]++;
+        state.elmIdx = offset;
 
-        for (size_t i = ridx + 1; i < rotator.size(); i++) {
-            rotator[i] = 0;
+        for (size_t i = state.ridx + 1; i < state.rotator.size(); i++) {
+            state.rotator[i] = 0;
         }
 
-        for (size_t i = 0; i < rotator.size(); i++) {
-            elmIdx += rotator[i] * tensor->getShape().strides[i];
+        for (size_t i = 0; i < state.rotator.size(); i++) {
+            state.elmIdx += state.rotator[i] * tensor->getShape().strides[i];
         }
 
-        ridx = rotator.size() - 1;
+        state.ridx = state.rotator.size() - 1;
     }
 
     IterPtr initIter(Tensor *tensor) {

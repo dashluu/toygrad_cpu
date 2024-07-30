@@ -37,6 +37,7 @@ namespace Toygrad::Tensor {
         friend struct RecipOp;
         friend struct NegOp;
         friend struct SqOp;
+        friend struct SqrtOp;
         friend struct EqOp;
         friend struct NeqOp;
         friend struct LessOp;
@@ -122,6 +123,8 @@ namespace Toygrad::Tensor {
         TensorPtr recip(real c = 1);
 
         TensorPtr sq();
+
+        TensorPtr sqrt();
 
         TensorPtr neg();
 

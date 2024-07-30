@@ -236,6 +236,13 @@ namespace Toygrad::Tensor {
         return outTensor;
     }
 
+    TensorPtr Tensor::sqrt() {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new SqrtOp(shared_from_this(), outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
+    }
+
     TensorPtr Tensor::neg() {
         auto outTensor = std::make_shared<Tensor>(shape);
         outTensor->op = new NegOp(shared_from_this(), outTensor.get());

@@ -39,6 +39,7 @@ namespace Toygrad::Tensor {
     struct RecipOp;
     struct NegOp;
     struct SqOp;
+    struct SqrtOp;
     struct EqOp;
     struct NeqOp;
     struct LessOp;
