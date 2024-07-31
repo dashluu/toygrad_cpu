@@ -67,7 +67,7 @@ namespace Toygrad::Tensor {
             IterPtr rhsIter = initIter(rhs.get());
             rhsIter->start();
             outIter->start();
-            real sum = 0.;
+            real sum = 0.f;
 
             while (rhsIter->hasNext()) {
                 if (rhsIter->count() > rhs->shape[rhs->shape.getNumDims() - 1] &&
@@ -91,10 +91,10 @@ namespace Toygrad::Tensor {
         IterPtr lhsGradIter = initIter(lhs->grad.get());
 
         // z = x1+x2+...+xn
-        // dx += 1.
+        // dx += 1
 
         for (lhsGradIter->start(); lhsGradIter->hasNext(); lhsGradIter->next()) {
-            lhsGradIter->curr() += 1.;
+            lhsGradIter->curr() += 1.f;
         }
     }
 
@@ -484,7 +484,7 @@ namespace Toygrad::Tensor {
         IterPtr opIter = initIter(operand.get());
 
         for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
-            outIter->curr() = static_cast<real>(opIter->curr() > 0.);
+            outIter->curr() = static_cast<real>(opIter->curr() > 0.f);
         }
     }
 
@@ -494,13 +494,39 @@ namespace Toygrad::Tensor {
         IterPtr opIter = initIter(operand.get());
         IterPtr opGradIter = initIter(operand->grad.get());
 
-        // z = max(x, 0.)
-        // dx += dz * 1 if x > 0. else 0
+        // z = max(x, 0)
+        // dx += dz * 1 if x > 0 else 0
 
         for (outGradIter->start(), opIter->next(), opGradIter->start();
              outGradIter->hasNext();
              outGradIter->next(), opIter->next(), opGradIter->next()) {
-            opGradIter->curr() += outGradIter->curr() * static_cast<real>(opIter->curr() > 0.);
+            opGradIter->curr() += outGradIter->curr() * static_cast<real>(opIter->curr() > 0.f);
+        }
+    }
+
+    void SigmoidOp::forward() {
+        IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
+
+        for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
+            outIter->curr() = 1.f / (1.f + std::exp(-opIter->curr()));
+        }
+    }
+
+    void SigmoidOp::backward() {
+        operand->initGrad();
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr opIter = initIter(operand.get());
+        IterPtr opGradIter = initIter(operand->grad.get());
+
+        // z = 1/(1+exp(-x))
+        // dx += dz*z*(1-z)
+
+        for (outGradIter->start(), opIter->next(), opGradIter->start();
+             outGradIter->hasNext();
+             outGradIter->next(), opIter->next(), opGradIter->next()) {
+            real sigm = 1.f / (1.f + std::exp(-opIter->curr()));
+            opGradIter->curr() += outGradIter->curr() * sigm * (1 - sigm);
         }
     }
 

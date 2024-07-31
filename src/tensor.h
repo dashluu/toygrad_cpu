@@ -45,6 +45,7 @@ namespace Toygrad::Tensor {
         friend struct LeqOp;
         friend struct GeqOp;
         friend struct ReluOp;
+        friend struct SigmoidOp;
         friend class TensorAccessor;
 
         Tensor();
@@ -177,6 +178,8 @@ namespace Toygrad::Tensor {
         TensorPtr divAssign(real c);
 
         TensorPtr relu();
+
+        TensorPtr sigmoid();
 
         TensorPtr reshape(const Shape &shape);
 

@@ -17,7 +17,7 @@ namespace Toygrad::Tensor {
         ADD, SUB, MUL, DIV, EXP, RECIP, NEG, SQ, SQRT,
         ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN,
         EQ, NEQ, LESS, GREATER, LEQ, GEQ,
-        RELU, SUM,
+        RELU, SUM, SIGMOID,
         COPY
     };
 
@@ -296,6 +296,15 @@ namespace Toygrad::Tensor {
 
     struct ReluOp final : UnOp {
         ReluOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::RELU, operand, tensor) {
+        }
+
+        void forward() override;
+
+        void backward() override;
+    };
+
+    struct SigmoidOp final : UnOp {
+        SigmoidOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::SIGMOID, operand, tensor) {
         }
 
         void forward() override;

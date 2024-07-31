@@ -414,6 +414,13 @@ namespace Toygrad::Tensor {
         return outTensor;
     }
 
+    TensorPtr Tensor::sigmoid() {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new SigmoidOp(shared_from_this(), outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
+    }
+
     TensorPtr Tensor::reshape(const Shape &shape) {
         assert(str_assert(shape.getSize() == this->shape.getSize(), AssertMessage::shapesMismatched));
         TensorPtr outTensor;

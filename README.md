@@ -32,8 +32,11 @@ performance or any parallelization.
 - [x] transpose
 - [x] sum
 - [x] relu
+- [ ] sigmoid
 - [ ] reshape: currently shares memory when the tensor is contiguous but allocates new memory when the tensor is
   non-contiguous
+- [ ] stack
+- [ ] cat
 - [ ] softmax
 - [ ] matmul
 
@@ -96,6 +99,9 @@ reversed topological order.
 
 # Quick start
 
-```angular2html
+For the CMAKE file, we can ignore the tests directory since it is used for testing only. Hence, we can comment out the
+following line in the main CMAKE file:
 
+```
+add_subdirectory(tests)
 ```

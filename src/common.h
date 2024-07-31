@@ -47,6 +47,7 @@ namespace Toygrad::Tensor {
     struct LeqOp;
     struct GeqOp;
     struct ReluOp;
+    struct SigmoidOp;
 
     using TensorPtr = std::shared_ptr<Tensor>;
     using IterPtr = std::unique_ptr<TensorIter>;
