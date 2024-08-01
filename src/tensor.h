@@ -38,6 +38,7 @@ namespace Toygrad::Tensor {
         friend struct NegOp;
         friend struct SqOp;
         friend struct SqrtOp;
+        friend struct AliasOp;
         friend struct EqOp;
         friend struct NeqOp;
         friend struct LessOp;
@@ -46,24 +47,30 @@ namespace Toygrad::Tensor {
         friend struct GeqOp;
         friend struct ReluOp;
         friend struct SigmoidOp;
+        friend struct CopyOp;
         friend class TensorAccessor;
 
         Tensor();
 
-        TensorPtr atHelper(const std::vector<size_t> &idx);
+        TensorPtr index(const std::vector<size_t> &idx);
+
+        TensorPtr index(const std::vector<Range> &ranges);
+
+        void initVec() {
+            vec = std::make_shared<Vec>(shape.getSize());
+        }
 
         void initGrad() {
             if (grad == nullptr) {
                 grad = std::make_shared<Tensor>(shape);
+                grad->initVec();
             }
         }
 
     public:
         explicit Tensor(const Shape &shape);
 
-        Tensor(const Shape &shape, const std::shared_ptr<Vec> &vec);
-
-        Tensor(const Tensor &tensor);
+        Tensor(const Tensor &tensor) = delete;
 
         ~Tensor();
 
@@ -157,9 +164,7 @@ namespace Toygrad::Tensor {
 
         TensorPtr geq(real c);
 
-        Tensor &operator=(const Tensor &rhs);
-
-        Tensor &operator=(real c);
+        Tensor &operator=(const Tensor &rhs) = delete;
 
         TensorPtr addAssign(const TensorPtr &rhs);
 

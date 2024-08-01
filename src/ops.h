@@ -15,7 +15,7 @@ namespace Toygrad::Tensor {
     enum class OpName {
         INDEX, CONST, ARANGE, FROM_ARR, RANDINT, RANDN,
         ADD, SUB, MUL, DIV, EXP, RECIP, NEG, SQ, SQRT,
-        ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN,
+        ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, ALIAS,
         EQ, NEQ, LESS, GREATER, LEQ, GEQ,
         RELU, SUM, SIGMOID,
         COPY
@@ -249,6 +249,13 @@ namespace Toygrad::Tensor {
         void forward() override;
 
         void backward() override;
+    };
+
+    struct AliasOp final : UnOp {
+        explicit AliasOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::ALIAS, operand, tensor) {
+        }
+
+        void forward() override;
     };
 
     struct EqOp final : BinOp {

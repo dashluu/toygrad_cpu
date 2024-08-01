@@ -40,6 +40,7 @@ namespace Toygrad::Tensor {
     struct NegOp;
     struct SqOp;
     struct SqrtOp;
+    struct AliasOp;
     struct EqOp;
     struct NeqOp;
     struct LessOp;
@@ -48,6 +49,7 @@ namespace Toygrad::Tensor {
     struct GeqOp;
     struct ReluOp;
     struct SigmoidOp;
+    struct CopyOp;
 
     using TensorPtr = std::shared_ptr<Tensor>;
     using IterPtr = std::unique_ptr<TensorIter>;

@@ -20,6 +20,9 @@ performance or any parallelization.
 - [x] exponent
 - [x] square
 - [x] square root
+- [ ] ln, log
+- [ ] pow
+- [ ] sin, cos
 - [x] tensor indexing
 - [x] randint
 - [x] randn

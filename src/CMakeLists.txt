@@ -7,7 +7,6 @@ set(HEADER FILES
         vec.h
         common.h
         ops.h
-        tensor_accessor.h
         rand_gen.h
         tensor_iter.h
         cgraph.h
@@ -18,7 +17,6 @@ set(SRC_FILES
         tensor.cpp
         vec.cpp
         ops.cpp
-        tensor_accessor.cpp
         tensor_iter.cpp
         cgraph.cpp
 )

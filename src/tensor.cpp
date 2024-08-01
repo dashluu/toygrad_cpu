@@ -2,7 +2,6 @@
 
 #include "tensor.h"
 #include "ops.h"
-#include "tensor_accessor.h"
 #include "tensor_iter.h"
 #include "cgraph.h"
 
@@ -15,17 +14,6 @@ namespace Toygrad::Tensor {
 
     Tensor::Tensor(const Shape &shape) : Tensor() {
         this->shape = shape;
-        vec = std::make_shared<Vec>(shape.getSize());
-    }
-
-    Tensor::Tensor(const Shape &shape, const std::shared_ptr<Vec> &vec): Tensor() {
-        this->shape = shape;
-        this->vec = vec;
-    }
-
-    Tensor::Tensor(const Tensor &tensor): Tensor() {
-        shape = tensor.shape;
-        vec = tensor.vec;
     }
 
     Tensor::~Tensor() {
@@ -88,7 +76,7 @@ namespace Toygrad::Tensor {
         return stream;
     }
 
-    TensorPtr Tensor::atHelper(const std::vector<size_t> &idx) {
+    TensorPtr Tensor::index(const std::vector<size_t> &idx) {
         assert(str_assert(shape.getNumDims() > idx.size(), AssertMessage::indexMultidimsOnly));
 
         // Index must stay within bounds
@@ -96,8 +84,38 @@ namespace Toygrad::Tensor {
             assert(str_assert(idx[i] < shape.view[i], AssertMessage::indexOutOfBounds));
         }
 
-        TensorAccessor indexer(this);
-        return indexer.at(idx);
+        auto ranges = std::vector<Range>();
+
+        for (size_t i: idx) {
+            ranges.push_back({i, i + 1, 1});
+        }
+
+        for (size_t i = idx.size(); i < shape.getNumDims(); i++) {
+            ranges.push_back({0, shape[i], 1});
+        }
+
+        return index(ranges);
+    }
+
+    TensorPtr Tensor::index(const std::vector<Range> &ranges) {
+        Shape outShape;
+        outShape.offset = shape.offset;
+        outShape.ranges = ranges;
+
+        for (size_t i = 0; i < ranges.size(); i++) {
+            outShape.offset += ranges[i].beg * shape.strides[i];
+        }
+
+        for (size_t i = 0; i < ranges.size(); i++) {
+            size_t dim = ceil(static_cast<real>(ranges[i].end - ranges[i].beg) / ranges[i].step);
+            outShape.view.push_back(dim);
+            outShape.strides.push_back(shape.strides[i] * ranges[i].step);
+        }
+
+        auto outTensor = std::make_shared<Tensor>(outShape);
+        outTensor->op = new AliasOp(shared_from_this(), outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
     bool Tensor::isContiguous() const {
@@ -106,7 +124,7 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::at(const std::vector<size_t> &idx) {
-        return atHelper(idx);
+        return index(idx);
     }
 
     TensorPtr Tensor::at(const std::vector<Range> &ranges) {
@@ -123,8 +141,7 @@ namespace Toygrad::Tensor {
             }
         }
 
-        TensorAccessor indexer(this);
-        return indexer.at(newRanges);
+        return index(newRanges);
     }
 
     TensorPtr Tensor::arange(const Shape &shape, real start, real step) {
@@ -163,7 +180,7 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::operator[](size_t idx) {
-        auto outTensor = atHelper(std::vector(1, idx));
+        auto outTensor = index(std::vector(1, idx));
         return outTensor;
     }
 
@@ -343,22 +360,6 @@ namespace Toygrad::Tensor {
         return geq(fromConst(shape, c));
     }
 
-    Tensor &Tensor::operator=(const Tensor &rhs) {
-        if (this == &rhs) {
-            return *this;
-        }
-
-        assert(str_assert(shape == rhs.shape, AssertMessage::shapesMismatched));
-        vec = rhs.vec;
-        // Keep the edges and op the same
-        return *this;
-    }
-
-    Tensor &Tensor::operator=(real c) {
-        auto constTensor = fromConst(shape, c);
-        return *this = *constTensor;
-    }
-
     TensorPtr Tensor::addAssign(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
         auto outTensor = std::make_shared<Tensor>(shape);
@@ -426,8 +427,10 @@ namespace Toygrad::Tensor {
         TensorPtr outTensor;
 
         if (isContiguous()) {
-            outTensor = std::make_shared<Tensor>(shape, vec);
+            outTensor = std::make_shared<Tensor>(shape);
             outTensor->shape.offset = this->shape.offset;
+            outTensor->op = new AliasOp(shared_from_this(), outTensor.get());
+            outTensor->op->forward();
         } else {
             outTensor = std::make_shared<Tensor>(shape);
             outTensor->op = new CopyOp(shared_from_this(), outTensor.get());
@@ -482,7 +485,10 @@ namespace Toygrad::Tensor {
         }
 
         Shape permShape(shape.offset, shape.view, shape.strides, shapePerm);
-        return std::make_shared<Tensor>(permShape, vec);
+        auto outTensor = std::make_shared<Tensor>(permShape);
+        outTensor->op = new AliasOp(shared_from_this(), outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
     }
 
     TensorPtr Tensor::T() {

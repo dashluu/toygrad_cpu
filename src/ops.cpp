@@ -7,6 +7,7 @@
 
 namespace Toygrad::Tensor {
     void ConstOp::forward() {
+        tensor->initVec();
         DenseIter iter(tensor);
 
         for (iter.start(); iter.hasNext(); iter.next()) {
@@ -15,6 +16,7 @@ namespace Toygrad::Tensor {
     }
 
     void ArangeOp::forward() {
+        tensor->initVec();
         DenseIter iter(tensor);
         size_t i = 0;
 
@@ -25,6 +27,7 @@ namespace Toygrad::Tensor {
     }
 
     void RandintOp::forward() {
+        tensor->initVec();
         DenseIter iter(tensor);
 
         for (iter.start(); iter.hasNext(); iter.next()) {
@@ -33,6 +36,7 @@ namespace Toygrad::Tensor {
     }
 
     void RandnOp::forward() {
+        tensor->initVec();
         DenseIter iter(tensor);
 
         for (iter.start(); iter.hasNext(); iter.next()) {
@@ -41,6 +45,7 @@ namespace Toygrad::Tensor {
     }
 
     void FromArrOp::forward() {
+        tensor->initVec();
         DenseIter iter(tensor);
         size_t i = 0;
 
@@ -51,6 +56,7 @@ namespace Toygrad::Tensor {
     }
 
     void SumOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
 
         if (dim == -1) {
@@ -99,6 +105,7 @@ namespace Toygrad::Tensor {
     }
 
     void AddOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -126,6 +133,7 @@ namespace Toygrad::Tensor {
     }
 
     void AddAssignOp::forward() {
+        tensor->vec = lhs->vec;
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -142,6 +150,7 @@ namespace Toygrad::Tensor {
     }
 
     void SubOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -169,6 +178,7 @@ namespace Toygrad::Tensor {
     }
 
     void SubAssignOp::forward() {
+        tensor->vec = lhs->vec;
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -185,6 +195,7 @@ namespace Toygrad::Tensor {
     }
 
     void MulOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -218,6 +229,7 @@ namespace Toygrad::Tensor {
     }
 
     void MulAssignOp::forward() {
+        tensor->vec = lhs->vec;
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -234,6 +246,7 @@ namespace Toygrad::Tensor {
     }
 
     void DivOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -267,6 +280,7 @@ namespace Toygrad::Tensor {
     }
 
     void DivAssignOp::forward() {
+        tensor->vec = lhs->vec;
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -283,6 +297,7 @@ namespace Toygrad::Tensor {
     }
 
     void ExpOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -308,6 +323,7 @@ namespace Toygrad::Tensor {
     }
 
     void RecipOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -334,6 +350,7 @@ namespace Toygrad::Tensor {
     }
 
     void NegOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -358,6 +375,7 @@ namespace Toygrad::Tensor {
     }
 
     void SqOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -383,6 +401,7 @@ namespace Toygrad::Tensor {
     }
 
     void SqrtOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -407,7 +426,12 @@ namespace Toygrad::Tensor {
         }
     }
 
+    void AliasOp::forward() {
+        tensor->vec = operand->vec;
+    }
+
     void EqOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -420,6 +444,7 @@ namespace Toygrad::Tensor {
     }
 
     void NeqOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -432,6 +457,7 @@ namespace Toygrad::Tensor {
     }
 
     void LessOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -444,6 +470,7 @@ namespace Toygrad::Tensor {
     }
 
     void GreaterOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -456,6 +483,7 @@ namespace Toygrad::Tensor {
     }
 
     void LeqOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -468,6 +496,7 @@ namespace Toygrad::Tensor {
     }
 
     void GeqOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -480,6 +509,7 @@ namespace Toygrad::Tensor {
     }
 
     void ReluOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -505,6 +535,7 @@ namespace Toygrad::Tensor {
     }
 
     void SigmoidOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -531,6 +562,7 @@ namespace Toygrad::Tensor {
     }
 
     void CopyOp::forward() {
+        tensor->initVec();
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
