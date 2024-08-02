@@ -11,7 +11,41 @@ performance or any parallelization.
 * http://blog.ezyang.com/2019/05/pytorch-internals/
 * https://dlsyscourse.org/lectures/
 
-# Features
+## Requirements
+
+* CMake 3.28 or higher
+* C++ 20
+* Googletest library(optional)
+* Git
+
+## Quick start
+
+For the CMAKE file, we can ignore the tests directory since it is used for testing only. Hence, we can comment out the
+following line in the main CMAKE file:
+
+```
+cmake_minimum_required(VERSION 3.28)
+project(toygrad_cpu)
+
+set(CMAKE_CXX_STANDARD 20)
+
+include_directories(src)
+add_subdirectory(src)
+// add_subdirectory(tests)
+add_executable(toygrad_cpu main.cpp)
+target_link_libraries(toygrad_cpu toygrad_cpu_lib)
+```
+
+and remove the `tests` folder.
+
+You can build using the following command in the project folder:
+
+```
+cmake -S . -B build
+cmake --build build
+```
+
+## Features
 
 - [x] tensor-to-tensor element-wise add, sub, mul, div
 - [x] tensor-to-constant add, sub, mul, div
@@ -20,9 +54,9 @@ performance or any parallelization.
 - [x] exponent
 - [x] square
 - [x] square root
-- [ ] ln, log
-- [ ] pow
-- [ ] sin, cos
+- [x] log
+- [x] pow
+- [x] sin, cos
 - [x] tensor indexing
 - [x] randint
 - [x] randn
@@ -35,7 +69,7 @@ performance or any parallelization.
 - [x] transpose
 - [x] sum
 - [x] relu
-- [ ] sigmoid
+- [x] sigmoid
 - [ ] reshape: currently shares memory when the tensor is contiguous but allocates new memory when the tensor is
   non-contiguous
 - [ ] stack
@@ -43,7 +77,7 @@ performance or any parallelization.
 - [ ] softmax
 - [ ] matmul
 
-# Code
+## Code
 
 ```
 // Arange operation
@@ -95,16 +129,7 @@ Output:
 [[16, 18]]]
 ```
 
-# Backpropagation
+## Backpropagation
 
 Backpropagation can be done by calling `tensor.backward()`. This is done by iterating the computational graph in
 reversed topological order.
-
-# Quick start
-
-For the CMAKE file, we can ignore the tests directory since it is used for testing only. Hence, we can comment out the
-following line in the main CMAKE file:
-
-```
-add_subdirectory(tests)
-```

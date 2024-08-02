@@ -33,6 +33,10 @@ namespace Toygrad::Tensor {
         friend struct MulAssignOp;
         friend struct DivOp;
         friend struct DivAssignOp;
+        friend struct PowOp;
+        friend struct LogOp;
+        friend struct SinOp;
+        friend struct CosOp;
         friend struct ExpOp;
         friend struct RecipOp;
         friend struct NegOp;
@@ -125,6 +129,14 @@ namespace Toygrad::Tensor {
         TensorPtr div(const TensorPtr &rhs);
 
         TensorPtr div(real c);
+
+        TensorPtr pow(real c);
+
+        TensorPtr log();
+
+        TensorPtr sin();
+
+        TensorPtr cos();
 
         TensorPtr exp();
 

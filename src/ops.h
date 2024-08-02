@@ -14,10 +14,10 @@ namespace Toygrad::Tensor {
 
     enum class OpName {
         INDEX, CONST, ARANGE, FROM_ARR, RANDINT, RANDN,
-        ADD, SUB, MUL, DIV, EXP, RECIP, NEG, SQ, SQRT,
+        ADD, SUB, MUL, DIV, POW, LOG, SIN, COS, EXP, RECIP, NEG, SQ, SQRT,
         ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, ALIAS,
         EQ, NEQ, LESS, GREATER, LEQ, GEQ,
-        RELU, SUM, SIGMOID,
+        RELU, SUM, SIGMOID, SOFTMAX,
         COPY
     };
 
@@ -197,6 +197,44 @@ namespace Toygrad::Tensor {
     struct DivAssignOp final : BinOp {
         DivAssignOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor) : BinOp(
             OpName::DIV_ASSIGN, lhs, rhs, tensor) {
+        }
+
+        void forward() override;
+
+        void backward() override;
+    };
+
+    struct PowOp final : UnOp {
+        real c;
+
+        PowOp(const TensorPtr &operand, Tensor *tensor, real c): UnOp(OpName::POW, operand, tensor), c(c) {
+        }
+
+        void forward() override;
+
+        void backward() override;
+    };
+
+    struct LogOp final : UnOp {
+        LogOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::LOG, operand, tensor) {
+        }
+
+        void forward() override;
+
+        void backward() override;
+    };
+
+    struct SinOp final : UnOp {
+        SinOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::SIN, operand, tensor) {
+        }
+
+        void forward() override;
+
+        void backward() override;
+    };
+
+    struct CosOp final : UnOp {
+        CosOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::COS, operand, tensor) {
         }
 
         void forward() override;

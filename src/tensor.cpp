@@ -232,6 +232,34 @@ namespace Toygrad::Tensor {
         return div(fromConst(shape, c));
     }
 
+    TensorPtr Tensor::pow(real c) {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new PowOp(shared_from_this(), outTensor.get(), c);
+        outTensor->op->forward();
+        return outTensor;
+    }
+
+    TensorPtr Tensor::log() {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new LogOp(shared_from_this(), outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
+    }
+
+    TensorPtr Tensor::sin() {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new SinOp(shared_from_this(), outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
+    }
+
+    TensorPtr Tensor::cos() {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->op = new CosOp(shared_from_this(), outTensor.get());
+        outTensor->op->forward();
+        return outTensor;
+    }
+
     TensorPtr Tensor::exp() {
         auto outTensor = std::make_shared<Tensor>(shape);
         outTensor->op = new ExpOp(shared_from_this(), outTensor.get());
