@@ -15,7 +15,7 @@ namespace Toygrad::Tensor {
     enum class OpName {
         INDEX, CONST, ARANGE, FROM_ARR, RANDINT, RANDN,
         ADD, SUB, MUL, DIV, POW, LOG, SIN, COS, EXP, RECIP, NEG, SQ, SQRT,
-        ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, ALIAS,
+        ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, ALIAS, PERM,
         EQ, NEQ, LESS, GREATER, LEQ, GEQ,
         RELU, SUM, SIGMOID, SOFTMAX,
         COPY
@@ -43,7 +43,6 @@ namespace Toygrad::Tensor {
 
         UnOp(OpName opName, const TensorPtr &operand, Tensor *tensor): Op(OpType::UN_OP, opName, tensor),
                                                                        operand(operand) {
-            // operand is never null
             operand->edges.push_back(tensor);
         }
     };
@@ -54,9 +53,8 @@ namespace Toygrad::Tensor {
 
         BinOp(OpName opName, const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): Op(OpType::BIN_OP, opName,
                 tensor), lhs(lhs), rhs(rhs) {
-            // lhs or rhs can be null depending on the op
-            if (lhs) lhs->edges.push_back(tensor);
-            if (rhs) rhs->edges.push_back(tensor);
+            lhs->edges.push_back(tensor);
+            rhs->edges.push_back(tensor);
         }
     };
 
@@ -115,12 +113,10 @@ namespace Toygrad::Tensor {
         void forward() override;
     };
 
-    // Mask it as a binary op although it makes sense for Sum to be unary op
-    struct SumOp final : BinOp {
+    struct SumOp final : UnOp {
         int dim;
 
-        SumOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor,
-              int dim): BinOp(OpName::SUM, lhs, rhs, tensor), dim(dim) {
+        SumOp(const TensorPtr &operand, Tensor *tensor, int dim): UnOp(OpName::SUM, operand, tensor), dim(dim) {
         }
 
         void forward() override;
@@ -137,14 +133,11 @@ namespace Toygrad::Tensor {
         void backward() override;
     };
 
-    struct AddAssignOp final : BinOp {
-        AddAssignOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor) : BinOp(
-            OpName::ADD_ASSIGN, lhs, rhs, tensor) {
+    struct AddAssignOp final : UnOp {
+        AddAssignOp(const TensorPtr &operand, Tensor *tensor) : UnOp(OpName::ADD_ASSIGN, operand, tensor) {
         }
 
         void forward() override;
-
-        void backward() override;
     };
 
     struct SubOp final : BinOp {
@@ -156,14 +149,11 @@ namespace Toygrad::Tensor {
         void backward() override;
     };
 
-    struct SubAssignOp final : BinOp {
-        SubAssignOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor) : BinOp(
-            OpName::SUB_ASSIGN, lhs, rhs, tensor) {
+    struct SubAssignOp final : UnOp {
+        SubAssignOp(const TensorPtr &operand, Tensor *tensor) : UnOp(OpName::SUB_ASSIGN, operand, tensor) {
         }
 
         void forward() override;
-
-        void backward() override;
     };
 
     struct MulOp final : BinOp {
@@ -175,14 +165,11 @@ namespace Toygrad::Tensor {
         void backward() override;
     };
 
-    struct MulAssignOp final : BinOp {
-        MulAssignOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor) : BinOp(
-            OpName::MUL_ASSIGN, lhs, rhs, tensor) {
+    struct MulAssignOp final : UnOp {
+        MulAssignOp(const TensorPtr &operand, Tensor *tensor) : UnOp(OpName::MUL_ASSIGN, operand, tensor) {
         }
 
         void forward() override;
-
-        void backward() override;
     };
 
     struct DivOp final : BinOp {
@@ -194,14 +181,11 @@ namespace Toygrad::Tensor {
         void backward() override;
     };
 
-    struct DivAssignOp final : BinOp {
-        DivAssignOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor) : BinOp(
-            OpName::DIV_ASSIGN, lhs, rhs, tensor) {
+    struct DivAssignOp final : UnOp {
+        DivAssignOp(const TensorPtr &operand, Tensor *tensor) : UnOp(OpName::DIV_ASSIGN, operand, tensor) {
         }
 
         void forward() override;
-
-        void backward() override;
     };
 
     struct PowOp final : UnOp {
@@ -339,6 +323,15 @@ namespace Toygrad::Tensor {
         void forward() override;
     };
 
+    struct PermOp final : UnOp {
+        PermOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::PERM, operand, tensor) {
+        }
+
+        void forward() override;
+
+        void backward() override;
+    };
+
     struct ReluOp final : UnOp {
         ReluOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::RELU, operand, tensor) {
         }
@@ -355,6 +348,15 @@ namespace Toygrad::Tensor {
         void forward() override;
 
         void backward() override;
+    };
+
+    struct SoftmaxOp final : UnOp {
+        int dim;
+
+        SoftmaxOp(const TensorPtr &operand, Tensor *tensor, int dim): UnOp(OpName::SOFTMAX, operand, tensor), dim(dim) {
+        }
+
+        void forward() override;
     };
 
     struct CopyOp final : UnOp {

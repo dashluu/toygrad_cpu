@@ -58,34 +58,31 @@ namespace Toygrad::Tensor {
     void SumOp::forward() {
         tensor->initVec();
         IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
+        real sum = 0.f;
 
         if (dim == -1) {
-            IterPtr lhsIter = initIter(lhs.get());
-            real sum = 0;
-
-            for (lhsIter->start(); lhsIter->hasNext(); lhsIter->next()) {
-                sum += lhsIter->curr();
+            for (opIter->start(); opIter->hasNext(); opIter->next()) {
+                sum += opIter->curr();
             }
 
             outIter->start();
             outIter->curr() = sum;
         } else {
-            IterPtr rhsIter = initIter(rhs.get());
-            rhsIter->start();
+            opIter->start();
             outIter->start();
-            real sum = 0.f;
 
-            while (rhsIter->hasNext()) {
-                if (rhsIter->count() > rhs->shape[rhs->shape.getNumDims() - 1] &&
-                    (rhsIter->count() - 1) % rhs->shape[rhs->shape.getNumDims() - 1] == 0) {
+            while (opIter->hasNext()) {
+                if (opIter->count() > operand->shape[operand->shape.getNumDims() - 1] &&
+                    (opIter->count() - 1) % operand->shape[operand->shape.getNumDims() - 1] == 0) {
                     outIter->curr() = sum;
                     outIter->next();
-                    sum = rhsIter->curr();
+                    sum = opIter->curr();
                 } else {
-                    sum += rhsIter->curr();
+                    sum += opIter->curr();
                 }
 
-                rhsIter->next();
+                opIter->next();
             }
 
             outIter->curr() = sum;
@@ -93,14 +90,32 @@ namespace Toygrad::Tensor {
     }
 
     void SumOp::backward() {
-        lhs->initGrad();
-        IterPtr lhsGradIter = initIter(lhs->grad.get());
+        tensor->initGrad(1.f);
+        operand->initGrad();
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr opGradIter = initIter(operand->grad.get());
 
         // z = x1+x2+...+xn
-        // dx += 1
+        // dx += dz * 1.
 
-        for (lhsGradIter->start(); lhsGradIter->hasNext(); lhsGradIter->next()) {
-            lhsGradIter->curr() += 1.f;
+        if (dim == -1) {
+            for (opGradIter->start(), outGradIter->start(); opGradIter->hasNext(); opGradIter->next()) {
+                opGradIter->curr() += outGradIter->curr();
+            }
+        } else {
+            opGradIter->start();
+            outGradIter->start();
+
+            while (opGradIter->hasNext()) {
+                opGradIter->curr() += outGradIter->curr();
+
+                if (opGradIter->count() > operand->shape[operand->shape.getNumDims() - 1] &&
+                    (opGradIter->count() - 1) % operand->shape[operand->shape.getNumDims() - 1] == 0) {
+                    outGradIter->next();
+                }
+
+                opGradIter->next();
+            }
         }
     }
 
@@ -133,20 +148,12 @@ namespace Toygrad::Tensor {
     }
 
     void AddAssignOp::forward() {
-        tensor->vec = lhs->vec;
         IterPtr outIter = initIter(tensor);
-        IterPtr lhsIter = initIter(lhs.get());
-        IterPtr rhsIter = initIter(rhs.get());
+        IterPtr opIter = initIter(operand.get());
 
-        for (outIter->start(), lhsIter->start(), rhsIter->start();
-             outIter->hasNext();
-             outIter->next(), lhsIter->next(), rhsIter->next()) {
-            outIter->curr() = lhsIter->curr() + rhsIter->curr();
+        for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
+            outIter->curr() += opIter->curr();
         }
-    }
-
-    void AddAssignOp::backward() {
-        lhs->grad = tensor->grad;
     }
 
     void SubOp::forward() {
@@ -178,20 +185,12 @@ namespace Toygrad::Tensor {
     }
 
     void SubAssignOp::forward() {
-        tensor->vec = lhs->vec;
         IterPtr outIter = initIter(tensor);
-        IterPtr lhsIter = initIter(lhs.get());
-        IterPtr rhsIter = initIter(rhs.get());
+        IterPtr opIter = initIter(operand.get());
 
-        for (outIter->start(), lhsIter->start(), rhsIter->start();
-             outIter->hasNext();
-             outIter->next(), lhsIter->next(), rhsIter->next()) {
-            outIter->curr() = lhsIter->curr() - rhsIter->curr();
+        for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
+            outIter->curr() -= opIter->curr();
         }
-    }
-
-    void SubAssignOp::backward() {
-        lhs->grad = tensor->grad;
     }
 
     void MulOp::forward() {
@@ -229,20 +228,12 @@ namespace Toygrad::Tensor {
     }
 
     void MulAssignOp::forward() {
-        tensor->vec = lhs->vec;
         IterPtr outIter = initIter(tensor);
-        IterPtr lhsIter = initIter(lhs.get());
-        IterPtr rhsIter = initIter(rhs.get());
+        IterPtr opIter = initIter(operand.get());
 
-        for (outIter->start(), lhsIter->start(), rhsIter->start();
-             outIter->hasNext();
-             outIter->next(), lhsIter->next(), rhsIter->next()) {
-            outIter->curr() = lhsIter->curr() * rhsIter->curr();
+        for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
+            outIter->curr() *= opIter->curr();
         }
-    }
-
-    void MulAssignOp::backward() {
-        lhs->grad = tensor->grad;
     }
 
     void DivOp::forward() {
@@ -280,20 +271,12 @@ namespace Toygrad::Tensor {
     }
 
     void DivAssignOp::forward() {
-        tensor->vec = lhs->vec;
         IterPtr outIter = initIter(tensor);
-        IterPtr lhsIter = initIter(lhs.get());
-        IterPtr rhsIter = initIter(rhs.get());
+        IterPtr opIter = initIter(operand.get());
 
-        for (outIter->start(), lhsIter->start(), rhsIter->start();
-             outIter->hasNext();
-             outIter->next(), lhsIter->next(), rhsIter->next()) {
-            outIter->curr() = lhsIter->curr() / rhsIter->curr();
+        for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
+            outIter->curr() /= opIter->curr();
         }
-    }
-
-    void DivAssignOp::backward() {
-        lhs->grad = tensor->grad;
     }
 
     void PowOp::forward() {
@@ -612,6 +595,22 @@ namespace Toygrad::Tensor {
         }
     }
 
+    void PermOp::forward() {
+        tensor->vec = operand->vec;
+    }
+
+    void PermOp::backward() {
+        operand->initGrad();
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr opGradIter = initIter(operand->grad.get());
+
+        for (outGradIter->start(), opGradIter->start();
+             outGradIter->hasNext();
+             outGradIter->next(), opGradIter->next()) {
+            opGradIter->curr() = outGradIter->curr();
+        }
+    }
+
     void ReluOp::forward() {
         tensor->initVec();
         IterPtr outIter = initIter(tensor);
@@ -662,6 +661,75 @@ namespace Toygrad::Tensor {
              outGradIter->next(), opIter->next(), opGradIter->next()) {
             real sigm = 1.f / (1.f + exp(-opIter->curr()));
             opGradIter->curr() += outGradIter->curr() * sigm * (1 - sigm);
+        }
+    }
+
+    void SoftmaxOp::forward() {
+        IterPtr opIter = initIter(operand.get());
+        real max;
+        opIter->start();
+
+        if (opIter->hasNext()) {
+            max = opIter->curr();
+            opIter->save();
+            opIter->next();
+        } else {
+            return;
+        }
+
+        tensor->initVec();
+        IterPtr outIter = initIter(tensor);
+        real sum = 0.f;
+
+        if (dim == -1) {
+            while (opIter->hasNext()) {
+                if (max < opIter->curr())
+                    max = opIter->curr();
+                opIter->next();
+            };
+
+            for (opIter->start(); opIter->hasNext(); opIter->next()) {
+                sum += exp(opIter->curr() - max);
+            }
+
+            for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
+                outIter->curr() = exp(opIter->curr() - max) / sum;
+            }
+        } else {
+            outIter->start();
+            // 0 for max, 1 for sum, 2 for exp
+            short pass = 0;
+
+            while (opIter->hasNext()) {
+                if (opIter->count() > operand->shape[operand->shape.getNumDims() - 1] &&
+                    (opIter->count() - 1) % operand->shape[operand->shape.getNumDims() - 1] == 0) {
+                    if (pass == 0) {
+                        opIter->restore();
+                        sum = exp(opIter->curr() - max);
+                        opIter->save();
+                        pass = 1;
+                    } else if (pass == 1) {
+                        opIter->restore();
+                        outIter->curr() = exp(opIter->curr() - max) / sum;
+                        outIter->next();
+                        pass = 2;
+                    } else {
+                        max = opIter->curr();
+                        opIter->save();
+                        pass = 0;
+                    }
+                } else if (pass == 0) {
+                    if (max < opIter->curr())
+                        max = opIter->curr();
+                } else if (pass == 1) {
+                    sum += exp(opIter->curr() - max);
+                } else {
+                    outIter->curr() = exp(opIter->curr() - max) / sum;
+                    outIter->next();
+                }
+
+                opIter->next();
+            }
         }
     }
 

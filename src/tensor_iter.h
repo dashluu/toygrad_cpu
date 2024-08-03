@@ -48,7 +48,8 @@ namespace Toygrad::Tensor {
         }
 
         void start() override {
-            state.elmIdx = tensor->getShape().offset;
+            offset = tensor->getShape().offset;
+            state.elmIdx = offset;
         }
 
         bool hasNext() override {
@@ -64,7 +65,7 @@ namespace Toygrad::Tensor {
         }
 
         size_t count() override {
-            return state.elmIdx + 1;
+            return state.elmIdx - offset + 1;
         }
 
         void save() override {

@@ -166,3 +166,36 @@ TEST(TensorTestFixture, indexSumTensor1) {
     auto x2 = Tensor::fromArr(s2, d2);
     assertEqTemplate(*t2, *x2);
 }
+
+TEST(TensorTestFixture, sumTensorGrad1) {
+    std::cout << std::endl << "Sum tensor's gradient 1:" << std::endl;
+    std::vector<size_t> v = {2, 3, 4};
+    Shape s1(v);
+    auto t1 = Tensor::arange(s1, 0, 1);
+    std::cout << "Original:" << std::endl << *t1 << std::endl;
+    auto t2 = t1->sum(1);
+    auto t3 = t2->sum();
+    t3->backward();
+    auto g1 = Tensor::fromConst(s1, 1.);
+    assertEqTemplate(*t1->getGrad(), *g1);
+}
+
+TEST(TensorTestFixture, softmaxTensor1) {
+    std::cout << std::endl << "Softmax tensor 1:" << std::endl;
+    std::vector<size_t> v = {2, 3, 4};
+    Shape s1(v);
+    auto t1 = Tensor::arange(s1, 0, 1);
+    std::cout << "Original:" << std::endl << *t1 << std::endl;
+    auto t2 = t1->softmax();
+    std::cout << "Softmax:" << std::endl << *t2 << std::endl;
+}
+
+TEST(TensorTestFixture, softmaxTensor2) {
+    std::cout << std::endl << "Softmax tensor 2:" << std::endl;
+    std::vector<size_t> v = {2, 3, 4};
+    Shape s1(v);
+    auto t1 = Tensor::arange(s1, 0, 1);
+    std::cout << "Original:" << std::endl << *t1 << std::endl;
+    auto t2 = t1->softmax(0);
+    std::cout << "Softmax:" << std::endl << *t2 << std::endl;
+}

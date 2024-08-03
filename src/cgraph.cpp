@@ -3,6 +3,8 @@
 //
 
 #include "cgraph.h"
+
+#include <ranges>
 #include "ops.h"
 
 namespace Toygrad::Tensor {
@@ -13,18 +15,18 @@ namespace Toygrad::Tensor {
         while (!stack.empty()) {
             TensorPtr tensor = stack.back();
             stack.pop_back();
-            tensor->op->backward();
 
-            if (tensor->op->opType == OpType::UN_OP) {
-                auto op = dynamic_cast<UnOp *>(tensor->op);
-                auto operand = op->operand;
-                if (operand) stack.push_back(operand);
-            } else if (tensor->op->opType == OpType::BIN_OP) {
-                auto op = dynamic_cast<BinOp *>(tensor->op);
-                auto lhs = op->lhs;
-                auto rhs = op->rhs;
-                if (lhs) stack.push_back(lhs);
-                if (rhs) stack.push_back(rhs);
+            for (auto &op: std::ranges::reverse_view(tensor->ops)) {
+                op->backward();
+
+                if (op->opType == OpType::UN_OP) {
+                    auto unOp = dynamic_cast<UnOp *>(op);
+                    stack.push_back(unOp->operand);
+                } else if (op->opType == OpType::BIN_OP) {
+                    auto binOp = dynamic_cast<BinOp *>(op);
+                    stack.push_back(binOp->lhs);
+                    stack.push_back(binOp->rhs);
+                }
             }
         }
     }

@@ -18,7 +18,8 @@ namespace Toygrad::Tensor {
 
     Tensor::~Tensor() {
         std::cout << "Destroyed tensor " << id << "..." << std::endl;
-        delete op;
+        for (const auto &op: ops) delete op;
+        ops.clear();
     }
 
     std::ostream &operator<<(std::ostream &stream, Tensor &tensor) {
@@ -113,8 +114,8 @@ namespace Toygrad::Tensor {
         }
 
         auto outTensor = std::make_shared<Tensor>(outShape);
-        outTensor->op = new AliasOp(shared_from_this(), outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new AliasOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
@@ -146,36 +147,36 @@ namespace Toygrad::Tensor {
 
     TensorPtr Tensor::arange(const Shape &shape, real start, real step) {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new ArangeOp(outTensor.get(), start, step);
-        outTensor->op->forward();
+        outTensor->ops.push_back(new ArangeOp(outTensor.get(), start, step));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::randint(const Shape &shape, int min, int max) {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new RandintOp(outTensor.get(), min, max);
-        outTensor->op->forward();
+        outTensor->ops.push_back(new RandintOp(outTensor.get(), min, max));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::randn(const Shape &shape) {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new RandnOp(outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new RandnOp(outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::fromConst(const Shape &shape, real c) {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new ConstOp(outTensor.get(), c);
-        outTensor->op->forward();
+        outTensor->ops.push_back(new ConstOp(outTensor.get(), c));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::fromArr(const Shape &shape, const real *data) {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new FromArrOp(outTensor.get(), data);
-        outTensor->op->forward();
+        outTensor->ops.push_back(new FromArrOp(outTensor.get(), data));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
@@ -187,8 +188,8 @@ namespace Toygrad::Tensor {
     TensorPtr Tensor::add(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new AddOp(shared_from_this(), rhs, outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new AddOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
@@ -199,8 +200,8 @@ namespace Toygrad::Tensor {
     TensorPtr Tensor::sub(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new SubOp(shared_from_this(), rhs, outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new SubOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
@@ -211,8 +212,8 @@ namespace Toygrad::Tensor {
     TensorPtr Tensor::mul(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new MulOp(shared_from_this(), rhs, outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new MulOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
@@ -223,8 +224,8 @@ namespace Toygrad::Tensor {
     TensorPtr Tensor::div(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new DivOp(shared_from_this(), rhs, outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new DivOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
@@ -234,72 +235,72 @@ namespace Toygrad::Tensor {
 
     TensorPtr Tensor::pow(real c) {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new PowOp(shared_from_this(), outTensor.get(), c);
-        outTensor->op->forward();
+        outTensor->ops.push_back(new PowOp(shared_from_this(), outTensor.get(), c));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::log() {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new LogOp(shared_from_this(), outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new LogOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::sin() {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new SinOp(shared_from_this(), outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new SinOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::cos() {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new CosOp(shared_from_this(), outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new CosOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::exp() {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new ExpOp(shared_from_this(), outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new ExpOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::recip(real c) {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new RecipOp(shared_from_this(), outTensor.get(), c);
-        outTensor->op->forward();
+        outTensor->ops.push_back(new RecipOp(shared_from_this(), outTensor.get(), c));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::sq() {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new SqOp(shared_from_this(), outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new SqOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::sqrt() {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new SqrtOp(shared_from_this(), outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new SqrtOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::neg() {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new NegOp(shared_from_this(), outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new NegOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::eq(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new EqOp(shared_from_this(), rhs, outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new EqOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
@@ -327,8 +328,8 @@ namespace Toygrad::Tensor {
     TensorPtr Tensor::neq(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new NeqOp(shared_from_this(), rhs, outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new NeqOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
@@ -343,8 +344,8 @@ namespace Toygrad::Tensor {
     TensorPtr Tensor::lt(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new LessOp(shared_from_this(), rhs, outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new LessOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
@@ -355,8 +356,8 @@ namespace Toygrad::Tensor {
     TensorPtr Tensor::gt(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new GreaterOp(shared_from_this(), rhs, outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new GreaterOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
@@ -367,8 +368,8 @@ namespace Toygrad::Tensor {
     TensorPtr Tensor::leq(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new LeqOp(shared_from_this(), rhs, outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new LeqOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
@@ -379,8 +380,8 @@ namespace Toygrad::Tensor {
     TensorPtr Tensor::geq(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new GeqOp(shared_from_this(), rhs, outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new GeqOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
@@ -390,10 +391,9 @@ namespace Toygrad::Tensor {
 
     TensorPtr Tensor::addAssign(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new AddAssignOp(shared_from_this(), rhs, outTensor.get());
-        outTensor->op->forward();
-        return outTensor;
+        ops.push_back(new AddAssignOp(rhs, this));
+        ops.back()->forward();
+        return shared_from_this();
     }
 
     TensorPtr Tensor::addAssign(real c) {
@@ -402,10 +402,9 @@ namespace Toygrad::Tensor {
 
     TensorPtr Tensor::subAssign(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new SubAssignOp(shared_from_this(), rhs, outTensor.get());
-        outTensor->op->forward();
-        return outTensor;
+        ops.push_back(new SubAssignOp(rhs, this));
+        ops.back()->forward();
+        return shared_from_this();
     }
 
     TensorPtr Tensor::subAssign(real c) {
@@ -414,10 +413,9 @@ namespace Toygrad::Tensor {
 
     TensorPtr Tensor::mulAssign(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new MulAssignOp(shared_from_this(), rhs, outTensor.get());
-        outTensor->op->forward();
-        return outTensor;
+        ops.push_back(new MulAssignOp(rhs, this));
+        ops.back()->forward();
+        return shared_from_this();
     }
 
     TensorPtr Tensor::mulAssign(real c) {
@@ -426,10 +424,9 @@ namespace Toygrad::Tensor {
 
     TensorPtr Tensor::divAssign(const TensorPtr &rhs) {
         assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new DivAssignOp(shared_from_this(), rhs, outTensor.get());
-        outTensor->op->forward();
-        return outTensor;
+        ops.push_back(new DivAssignOp(rhs, this));
+        ops.back()->forward();
+        return shared_from_this();
     }
 
     TensorPtr Tensor::divAssign(real c) {
@@ -438,15 +435,48 @@ namespace Toygrad::Tensor {
 
     TensorPtr Tensor::relu() {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new ReluOp(shared_from_this(), outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new ReluOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::sigmoid() {
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->op = new SigmoidOp(shared_from_this(), outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new SigmoidOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
+        return outTensor;
+    }
+
+    TensorPtr Tensor::softmax(int dim) {
+        assert(str_assert(dim >= -1 && dim < static_cast<int>(shape.getNumDims()), AssertMessage::invalidDim));
+        TensorPtr outTensor;
+
+        if (dim == -1) {
+            outTensor = std::make_shared<Tensor>(shape);
+            outTensor->ops.push_back(new SoftmaxOp(shared_from_this(), outTensor.get(), dim));
+            outTensor->ops.back()->forward();
+        } else {
+            Shape softmaxShape;
+            softmaxShape.offset = 0;
+            std::vector<size_t> opPerm;
+
+            for (size_t i = 0; i < shape.getNumDims(); i++) {
+                if (i != dim) {
+                    softmaxShape.view.push_back(shape[i]);
+                    opPerm.push_back(i);
+                }
+            }
+
+            softmaxShape.view.push_back(shape[dim]);
+            softmaxShape.defRanges();
+            softmaxShape.defStrides();
+            opPerm.push_back(dim);
+            auto opTensor = perm(opPerm);
+            outTensor = std::make_shared<Tensor>(softmaxShape);
+            outTensor->ops.push_back(new SoftmaxOp(opTensor, outTensor.get(), dim));
+            outTensor->ops.back()->forward();
+        }
+
         return outTensor;
     }
 
@@ -457,12 +487,12 @@ namespace Toygrad::Tensor {
         if (isContiguous()) {
             outTensor = std::make_shared<Tensor>(shape);
             outTensor->shape.offset = this->shape.offset;
-            outTensor->op = new AliasOp(shared_from_this(), outTensor.get());
-            outTensor->op->forward();
+            outTensor->ops.push_back(new AliasOp(shared_from_this(), outTensor.get()));
+            outTensor->ops.back()->forward();
         } else {
             outTensor = std::make_shared<Tensor>(shape);
-            outTensor->op = new CopyOp(shared_from_this(), outTensor.get());
-            outTensor->op->forward();
+            outTensor->ops.push_back(new CopyOp(shared_from_this(), outTensor.get()));
+            outTensor->ops.back()->forward();
         }
 
         return outTensor;
@@ -474,7 +504,8 @@ namespace Toygrad::Tensor {
 
         if (dim == -1) {
             outTensor = std::make_shared<Tensor>(Shape({1}));
-            outTensor->op = new SumOp(shared_from_this(), nullptr, outTensor.get(), dim);
+            outTensor->ops.push_back(new SumOp(shared_from_this(), outTensor.get(), dim));
+            outTensor->ops.back()->forward();
         } else {
             Shape sumShape;
             sumShape.offset = 0;
@@ -490,12 +521,12 @@ namespace Toygrad::Tensor {
             sumShape.defRanges();
             sumShape.defStrides();
             opPerm.push_back(dim);
-            outTensor = std::make_shared<Tensor>(sumShape);
             auto opTensor = perm(opPerm);
-            outTensor->op = new SumOp(shared_from_this(), opTensor, outTensor.get(), dim);
+            outTensor = std::make_shared<Tensor>(sumShape);
+            outTensor->ops.push_back(new SumOp(opTensor, outTensor.get(), dim));
+            outTensor->ops.back()->forward();
         }
 
-        outTensor->op->forward();
         return outTensor;
     }
 
@@ -514,8 +545,8 @@ namespace Toygrad::Tensor {
 
         Shape permShape(shape.offset, shape.view, shape.strides, shapePerm);
         auto outTensor = std::make_shared<Tensor>(permShape);
-        outTensor->op = new AliasOp(shared_from_this(), outTensor.get());
-        outTensor->op->forward();
+        outTensor->ops.push_back(new PermOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 

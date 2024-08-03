@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <vector>
 #include <numeric>
 
@@ -35,19 +36,17 @@ namespace Toygrad::Tensor {
         }
 
         void initPerm(const std::vector<size_t> &perm) {
-            auto tmp = perm;
-            size_t j = 0;
+            auto tmpRanges = ranges;
+            auto tmpView = view;
+            auto tmpStrides = strides;
 
             for (size_t i = 0; i < perm.size(); i++) {
-                if (j == tmp[j]) j++;
-
-                if (j < perm.size()) {
-                    std::swap(ranges[j], ranges[tmp[j]]);
-                    std::swap(view[j], view[tmp[j]]);
-                    std::swap(strides[j], strides[tmp[j]]);
-                    std::swap(tmp[j], tmp[tmp[j]]);
-                }
+                ranges[i] = tmpRanges[perm[i]];
+                view[i] = tmpView[perm[i]];
+                strides[i] = tmpStrides[perm[i]];
             }
+
+            // std::cout << "no";
         }
 
     public:

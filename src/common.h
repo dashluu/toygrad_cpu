@@ -18,7 +18,6 @@ namespace Toygrad::Tensor {
     class CGraph;
     class TensorIter;
     class Tensor;
-    class TensorAccessor;
     struct Op;
     struct UnOp;
     struct BinOp;
@@ -53,8 +52,10 @@ namespace Toygrad::Tensor {
     struct GreaterOp;
     struct LeqOp;
     struct GeqOp;
+    struct PermOp;
     struct ReluOp;
     struct SigmoidOp;
+    struct SoftmaxOp;
     struct CopyOp;
 
     using TensorPtr = std::shared_ptr<Tensor>;

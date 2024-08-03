@@ -10,7 +10,7 @@ namespace Toygrad::Tensor {
         std::shared_ptr<Vec> vec;
         static size_t idCounter;
         size_t id;
-        Op *op = nullptr;
+        std::vector<Op *> ops = std::vector<Op *>();
         TensorPtr grad;
         std::vector<Tensor *> edges = std::vector<Tensor *>();
 
@@ -49,10 +49,11 @@ namespace Toygrad::Tensor {
         friend struct GreaterOp;
         friend struct LeqOp;
         friend struct GeqOp;
+        friend struct PermOp;
         friend struct ReluOp;
         friend struct SigmoidOp;
+        friend struct SoftmaxOp;
         friend struct CopyOp;
-        friend class TensorAccessor;
 
         Tensor();
 
@@ -64,10 +65,21 @@ namespace Toygrad::Tensor {
             vec = std::make_shared<Vec>(shape.getSize());
         }
 
+        void initVec(real c) {
+            vec = std::make_shared<Vec>(shape.getSize(), c);
+        }
+
         void initGrad() {
             if (grad == nullptr) {
                 grad = std::make_shared<Tensor>(shape);
                 grad->initVec();
+            }
+        }
+
+        void initGrad(real c) {
+            if (grad == nullptr) {
+                grad = std::make_shared<Tensor>(shape);
+                grad->initVec(c);
             }
         }
 
@@ -197,6 +209,8 @@ namespace Toygrad::Tensor {
         TensorPtr relu();
 
         TensorPtr sigmoid();
+
+        TensorPtr softmax(int dim = -1);
 
         TensorPtr reshape(const Shape &shape);
 
