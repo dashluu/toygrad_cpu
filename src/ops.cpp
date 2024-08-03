@@ -105,12 +105,12 @@ namespace Toygrad::Tensor {
         } else {
             opGradIter->start();
             outGradIter->start();
+            size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
 
             while (opGradIter->hasNext()) {
                 opGradIter->curr() += outGradIter->curr();
 
-                if (opGradIter->count() > operand->shape[operand->shape.getNumDims() - 1] &&
-                    (opGradIter->count() - 1) % operand->shape[operand->shape.getNumDims() - 1] == 0) {
+                if (opGradIter->count() > lastDim && (opGradIter->count() - 1) % lastDim == 0) {
                     outGradIter->next();
                 }
 
@@ -699,10 +699,10 @@ namespace Toygrad::Tensor {
             outIter->start();
             // 0 for max, 1 for sum, 2 for exp
             short pass = 0;
+            size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
 
             while (opIter->hasNext()) {
-                if (opIter->count() > operand->shape[operand->shape.getNumDims() - 1] &&
-                    (opIter->count() - 1) % operand->shape[operand->shape.getNumDims() - 1] == 0) {
+                if (opIter->count() > lastDim && (opIter->count() - 1) % lastDim == 0) {
                     if (pass == 0) {
                         opIter->restore();
                         sum = exp(opIter->curr() - max);
@@ -728,6 +728,28 @@ namespace Toygrad::Tensor {
                     outIter->next();
                 }
 
+                opIter->next();
+            }
+
+            // No need to do max
+            opIter->restore();
+            sum = exp(opIter->curr() - max);
+            opIter->save();
+            opIter->next();
+
+            while (opIter->hasNext()) {
+                sum += exp(opIter->curr() - max);
+                opIter->next();
+            }
+
+            opIter->restore();
+            outIter->curr() = exp(opIter->curr() - max) / sum;
+            outIter->next();
+            opIter->next();
+
+            while (opIter->hasNext()) {
+                outIter->curr() = exp(opIter->curr() - max) / sum;
+                outIter->next();
                 opIter->next();
             }
         }

@@ -196,6 +196,6 @@ TEST(TensorTestFixture, softmaxTensor2) {
     Shape s1(v);
     auto t1 = Tensor::arange(s1, 0, 1);
     std::cout << "Original:" << std::endl << *t1 << std::endl;
-    auto t2 = t1->softmax(0);
+    auto t2 = t1->softmax(1);
     std::cout << "Softmax:" << std::endl << *t2 << std::endl;
 }

@@ -452,29 +452,33 @@ namespace Toygrad::Tensor {
         TensorPtr outTensor;
 
         if (dim == -1) {
-            outTensor = std::make_shared<Tensor>(shape);
+            Shape softmaxShape = shape;
+            softmaxShape.offset = 0;
+            outTensor = std::make_shared<Tensor>(softmaxShape);
             outTensor->ops.push_back(new SoftmaxOp(shared_from_this(), outTensor.get(), dim));
             outTensor->ops.back()->forward();
         } else {
-            Shape softmaxShape;
-            softmaxShape.offset = 0;
-            std::vector<size_t> opPerm;
+            std::vector<size_t> shapePerm;
 
             for (size_t i = 0; i < shape.getNumDims(); i++) {
                 if (i != dim) {
-                    softmaxShape.view.push_back(shape[i]);
-                    opPerm.push_back(i);
+                    shapePerm.push_back(i);
                 }
             }
 
-            softmaxShape.view.push_back(shape[dim]);
-            softmaxShape.defRanges();
-            softmaxShape.defStrides();
-            opPerm.push_back(dim);
-            auto opTensor = perm(opPerm);
-            outTensor = std::make_shared<Tensor>(softmaxShape);
-            outTensor->ops.push_back(new SoftmaxOp(opTensor, outTensor.get(), dim));
-            outTensor->ops.back()->forward();
+            shapePerm.push_back(dim);
+            // Permutate operand
+            auto permTensor = perm(shapePerm);
+            // Compute softmax
+            Shape softmaxShape = shape.perm(shapePerm);
+            softmaxShape.offset = 0;
+            auto softmaxTensor = std::make_shared<Tensor>(softmaxShape);
+            softmaxTensor->ops.push_back(new SoftmaxOp(permTensor, softmaxTensor.get(), dim));
+            softmaxTensor->ops.back()->forward();
+            // Permutate softmax
+            Shape softmaxPermShape = shape;
+            softmaxPermShape.offset = 0;
+            outTensor = softmaxTensor->perm(softmaxPermShape);
         }
 
         return outTensor;
@@ -509,21 +513,21 @@ namespace Toygrad::Tensor {
         } else {
             Shape sumShape;
             sumShape.offset = 0;
-            std::vector<size_t> opPerm;
+            std::vector<size_t> shapePerm;
 
             for (size_t i = 0; i < shape.getNumDims(); i++) {
                 if (i != dim) {
                     sumShape.view.push_back(shape[i]);
-                    opPerm.push_back(i);
+                    shapePerm.push_back(i);
                 }
             }
 
             sumShape.defRanges();
             sumShape.defStrides();
-            opPerm.push_back(dim);
-            auto opTensor = perm(opPerm);
+            shapePerm.push_back(dim);
+            auto permTensor = perm(shapePerm);
             outTensor = std::make_shared<Tensor>(sumShape);
-            outTensor->ops.push_back(new SumOp(opTensor, outTensor.get(), dim));
+            outTensor->ops.push_back(new SumOp(permTensor, outTensor.get(), dim));
             outTensor->ops.back()->forward();
         }
 
@@ -543,8 +547,16 @@ namespace Toygrad::Tensor {
             assert(str_assert(i, AssertMessage::invalidShapePerm));
         }
 
-        Shape permShape(shape.offset, shape.view, shape.strides, shapePerm);
+        Shape permShape = shape.perm(shapePerm);
         auto outTensor = std::make_shared<Tensor>(permShape);
+        outTensor->ops.push_back(new PermOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
+        return outTensor;
+    }
+
+    TensorPtr Tensor::perm(const Shape &target) {
+        // TODO: check
+        auto outTensor = std::make_shared<Tensor>(target);
         outTensor->ops.push_back(new PermOp(shared_from_this(), outTensor.get()));
         outTensor->ops.back()->forward();
         return outTensor;

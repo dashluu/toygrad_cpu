@@ -218,6 +218,8 @@ namespace Toygrad::Tensor {
 
         TensorPtr perm(const std::vector<size_t> &shapePerm);
 
+        TensorPtr perm(const Shape &target);
+
         TensorPtr T();
 
         bool isEmpty();

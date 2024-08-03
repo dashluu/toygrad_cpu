@@ -1,8 +1,6 @@
 #pragma once
 
-#include <iostream>
 #include <vector>
-#include <numeric>
 
 #include "common.h"
 
@@ -10,7 +8,6 @@ namespace Toygrad::Tensor {
     struct Shape {
     private:
         friend class Tensor;
-        friend class TensorAccessor;
 
         Shape() = default;
 
@@ -35,56 +32,11 @@ namespace Toygrad::Tensor {
             }
         }
 
-        void initPerm(const std::vector<size_t> &perm) {
-            auto tmpRanges = ranges;
-            auto tmpView = view;
-            auto tmpStrides = strides;
-
-            for (size_t i = 0; i < perm.size(); i++) {
-                ranges[i] = tmpRanges[perm[i]];
-                view[i] = tmpView[perm[i]];
-                strides[i] = tmpStrides[perm[i]];
-            }
-
-            // std::cout << "no";
-        }
-
     public:
         std::vector<Range> ranges;
         size_t offset = 0;
         std::vector<size_t> view;
         std::vector<size_t> strides;
-
-        Shape(const std::vector<Range> &rng, size_t offset, const std::vector<size_t> &view,
-              const std::vector<size_t> &str, const std::vector<size_t> &perm): ranges(rng), offset(offset), view(view),
-            strides(str) {
-            initPerm(perm);
-        }
-
-        Shape(const std::vector<Range> &rng, size_t offset, const std::vector<size_t> &view,
-              const std::vector<size_t> &perm): ranges(rng), offset(offset), view(view) {
-            defStrides();
-            initPerm(perm);
-        }
-
-        Shape(const std::vector<Range> &rng, size_t offset, const std::vector<size_t> &view): ranges(rng),
-            offset(offset),
-            view(view) {
-            defStrides();
-        }
-
-        Shape(size_t offset, const std::vector<size_t> &view, const std::vector<size_t> &str,
-              const std::vector<size_t> &perm): offset(offset), view(view), strides(str) {
-            defRanges();
-            initPerm(perm);
-        }
-
-        Shape(size_t offset, const std::vector<size_t> &view, const std::vector<size_t> &perm): offset(offset),
-            view(view) {
-            defStrides();
-            defRanges();
-            initPerm(perm);
-        }
 
         Shape(size_t offset, const std::vector<size_t> &view): offset(offset), view(view) {
             defStrides();
@@ -99,6 +51,18 @@ namespace Toygrad::Tensor {
             offset = shape.offset;
             view = shape.view;
             strides = shape.strides;
+        }
+
+        Shape perm(const std::vector<size_t> &shapePerm) const {
+            Shape shape(*this);
+
+            for (size_t i = 0; i < shapePerm.size(); i++) {
+                shape.ranges[i] = ranges[shapePerm[i]];
+                shape.view[i] = view[shapePerm[i]];
+                shape.strides[i] = strides[shapePerm[i]];
+            }
+
+            return shape;
         }
 
         bool operator==(const Shape &rhs) const {
