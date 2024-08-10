@@ -2,8 +2,8 @@
 
 ## Introduction
 
-A simple and toy framework similar to PyTorch written in C++ 20. Currently, it only works on CPU and does not emphasize on
-performance or any parallelization.
+A simple and toy framework similar to PyTorch written in C++ 20. Currently, it only works on CPU and is not optimized
+for performance.
 
 ## Acknowledgements
 
@@ -67,6 +67,7 @@ cmake --build build
 - [x] =, +=, -=, *=, /=
 - [x] shape permutation
 - [x] transpose
+- [x] max, min
 - [x] sum
 - [x] relu
 - [x] sigmoid

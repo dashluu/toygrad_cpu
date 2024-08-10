@@ -49,6 +49,8 @@ namespace Toygrad::Tensor {
         friend struct GreaterOp;
         friend struct LeqOp;
         friend struct GeqOp;
+        friend struct MaxOp;
+        friend struct MinOp;
         friend struct PermOp;
         friend struct ReluOp;
         friend struct SigmoidOp;

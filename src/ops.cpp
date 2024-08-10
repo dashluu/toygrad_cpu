@@ -219,7 +219,7 @@ namespace Toygrad::Tensor {
         // dx += dz*y
         // dy += dx*x
 
-        for (outGradIter->start(), lhsIter->next(), lhsGradIter->start(), rhsIter->start(), rhsGradIter->start();
+        for (outGradIter->start(), lhsIter->start(), lhsGradIter->start(), rhsIter->start(), rhsGradIter->start();
              outGradIter->hasNext();
              outGradIter->next(), lhsIter->next(), lhsGradIter->next(), rhsIter->next(), rhsGradIter->next()) {
             lhsGradIter->curr() += outGradIter->curr() * rhsIter->curr();
@@ -262,7 +262,7 @@ namespace Toygrad::Tensor {
         // dx += dz * (1/y)
         // dy += dz * (-x / y^2)
 
-        for (outGradIter->start(), lhsIter->next(), lhsGradIter->start(), rhsIter->start(), rhsGradIter->start();
+        for (outGradIter->start(), lhsIter->start(), lhsGradIter->start(), rhsIter->start(), rhsGradIter->start();
              outGradIter->hasNext();
              outGradIter->next(), lhsIter->next(), lhsGradIter->next(), rhsIter->next(), rhsGradIter->next()) {
             lhsGradIter->curr() += outGradIter->curr() / rhsIter->curr();
@@ -298,7 +298,7 @@ namespace Toygrad::Tensor {
         // z = x^c
         // dx += dz * c * x^(c-1)
 
-        for (outGradIter->start(), opIter->next(), opGradIter->start();
+        for (outGradIter->start(), opIter->start(), opGradIter->start();
              outGradIter->hasNext();
              outGradIter->next(), opIter->next(), opGradIter->next()) {
             opGradIter->curr() += outGradIter->curr() * c * pow(opIter->curr(), c - 1);
@@ -324,7 +324,7 @@ namespace Toygrad::Tensor {
         // z = log(x)
         // dx += dz * 1 / x
 
-        for (outGradIter->start(), opIter->next(), opGradIter->start();
+        for (outGradIter->start(), opIter->start(), opGradIter->start();
              outGradIter->hasNext();
              outGradIter->next(), opIter->next(), opGradIter->next()) {
             opGradIter->curr() += outGradIter->curr() / opIter->curr();
@@ -350,7 +350,7 @@ namespace Toygrad::Tensor {
         // z = sin(x)
         // dx += dz * cos(x)
 
-        for (outGradIter->start(), opIter->next(), opGradIter->start();
+        for (outGradIter->start(), opIter->start(), opGradIter->start();
              outGradIter->hasNext();
              outGradIter->next(), opIter->next(), opGradIter->next()) {
             opGradIter->curr() += outGradIter->curr() * cos(opIter->curr());
@@ -376,7 +376,7 @@ namespace Toygrad::Tensor {
         // z = cos(x)
         // dx += dz * -sin(x)
 
-        for (outGradIter->start(), opIter->next(), opGradIter->start();
+        for (outGradIter->start(), opIter->start(), opGradIter->start();
              outGradIter->hasNext();
              outGradIter->next(), opIter->next(), opGradIter->next()) {
             opGradIter->curr() += outGradIter->curr() * -sin(opIter->curr());
@@ -396,16 +396,16 @@ namespace Toygrad::Tensor {
     void ExpOp::backward() {
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
-        IterPtr opIter = initIter(operand.get());
+        IterPtr outIter = initIter(tensor);
         IterPtr opGradIter = initIter(operand->grad.get());
 
         // z = e^x
         // dx += dz * e^x
 
-        for (outGradIter->start(), opIter->next(), opGradIter->start();
+        for (outGradIter->start(), outIter->start(), opGradIter->start();
              outGradIter->hasNext();
-             outGradIter->next(), opIter->next(), opGradIter->next()) {
-            opGradIter->curr() += outGradIter->curr() * exp(opIter->curr());
+             outGradIter->next(), outIter->next(), opGradIter->next()) {
+            opGradIter->curr() += outGradIter->curr() * outIter->curr();
         }
     }
 
@@ -429,7 +429,7 @@ namespace Toygrad::Tensor {
         // z = c / x
         // dx += dz * (-c / x^2)
 
-        for (outGradIter->start(), opIter->next(), opGradIter->start();
+        for (outGradIter->start(), opIter->start(), opGradIter->start();
              outGradIter->hasNext();
              outGradIter->next(), opIter->next(), opGradIter->next()) {
             opGradIter->curr() += outGradIter->curr() * -c / (opIter->curr() * opIter->curr());
@@ -480,7 +480,7 @@ namespace Toygrad::Tensor {
         // z = x^2
         // dx += dz * 2 * x
 
-        for (outGradIter->start(), opIter->next(), opGradIter->start();
+        for (outGradIter->start(), opIter->start(), opGradIter->start();
              outGradIter->hasNext();
              outGradIter->next(), opIter->next(), opGradIter->next()) {
             opGradIter->curr() += outGradIter->curr() * 2 * opIter->curr();
@@ -500,16 +500,16 @@ namespace Toygrad::Tensor {
     void SqrtOp::backward() {
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
-        IterPtr opIter = initIter(operand.get());
+        IterPtr outIter = initIter(tensor);
         IterPtr opGradIter = initIter(operand->grad.get());
 
         // z = sqrt(x)
         // dx += dz * 1 / (2 * sqrt(x))
 
-        for (outGradIter->start(), opIter->next(), opGradIter->start();
+        for (outGradIter->start(), outIter->start(), opGradIter->start();
              outGradIter->hasNext();
-             outGradIter->next(), opIter->next(), opGradIter->next()) {
-            opGradIter->curr() += outGradIter->curr() / (2 * sqrt(opIter->curr()));
+             outGradIter->next(), outIter->next(), opGradIter->next()) {
+            opGradIter->curr() += outGradIter->curr() / (2 * outIter->curr());
         }
     }
 
@@ -595,6 +595,162 @@ namespace Toygrad::Tensor {
         }
     }
 
+    void MaxOp::forward() {
+        tensor->initVec();
+        IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
+        opIter->start();
+
+        if (!opIter->hasNext())
+            return;
+
+        real max = opIter->curr();
+        opIter->next();
+
+        if (dim == -1) {
+            while (opIter->hasNext()) {
+                if (opIter->curr() > max)
+                    max = opIter->curr();
+                opIter->next();
+            }
+
+            outIter->start();
+            outIter->curr() = max;
+        } else {
+            opIter->start();
+            outIter->start();
+
+            while (opIter->hasNext()) {
+                if (opIter->count() > operand->shape[operand->shape.getNumDims() - 1] &&
+                    (opIter->count() - 1) % operand->shape[operand->shape.getNumDims() - 1] == 0) {
+                    outIter->curr() = max;
+                    outIter->next();
+                    max = opIter->curr();
+                } else if (opIter->curr() > max) {
+                    max = opIter->curr();
+                }
+
+                opIter->next();
+            }
+
+            outIter->curr() = max;
+        }
+    }
+
+    void MaxOp::backward() {
+        operand->initGrad();
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr opGradIter = initIter(operand->grad.get());
+
+        // z = max(x1,x2,...,xn)
+        // dx += dz * [1. if xi == z else 0.]
+
+        if (dim == -1) {
+            for (opGradIter->start(), outGradIter->start(); opGradIter->hasNext(); opGradIter->next()) {
+                opGradIter->curr() += outGradIter->curr();
+            }
+        } else {
+            IterPtr outIter = initIter(tensor);
+            IterPtr opIter = initIter(operand.get());
+            outIter->start();
+            outGradIter->start();
+            opIter->start();
+            opGradIter->start();
+            size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
+
+            while (opGradIter->hasNext()) {
+                if (outIter->curr() == opIter->curr())
+                    opGradIter->curr() += outGradIter->curr();
+
+                if (opGradIter->count() > lastDim && (opGradIter->count() - 1) % lastDim == 0) {
+                    outIter->next();
+                    outGradIter->next();
+                }
+
+                opIter->next();
+                opGradIter->next();
+            }
+        }
+    }
+
+    void MinOp::forward() {
+        tensor->initVec();
+        IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
+        opIter->start();
+
+        if (!opIter->hasNext())
+            return;
+
+        real min = opIter->curr();
+        opIter->next();
+
+        if (dim == -1) {
+            while (opIter->hasNext()) {
+                if (opIter->curr() < min)
+                    min = opIter->curr();
+                opIter->next();
+            }
+
+            outIter->start();
+            outIter->curr() = min;
+        } else {
+            opIter->start();
+            outIter->start();
+
+            while (opIter->hasNext()) {
+                if (opIter->count() > operand->shape[operand->shape.getNumDims() - 1] &&
+                    (opIter->count() - 1) % operand->shape[operand->shape.getNumDims() - 1] == 0) {
+                    outIter->curr() = min;
+                    outIter->next();
+                    min = opIter->curr();
+                } else if (opIter->curr() < min) {
+                    min = opIter->curr();
+                }
+
+                opIter->next();
+            }
+
+            outIter->curr() = min;
+        }
+    }
+
+    void MinOp::backward() {
+        operand->initGrad();
+        IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr opGradIter = initIter(operand->grad.get());
+
+        // z = min(x1,x2,...,xn)
+        // dx += dz * [1. if xi == z else 0.]
+
+        if (dim == -1) {
+            for (opGradIter->start(), outGradIter->start(); opGradIter->hasNext(); opGradIter->next()) {
+                opGradIter->curr() += outGradIter->curr();
+            }
+        } else {
+            IterPtr outIter = initIter(tensor);
+            IterPtr opIter = initIter(operand.get());
+            outIter->start();
+            outGradIter->start();
+            opIter->start();
+            opGradIter->start();
+            size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
+
+            while (opGradIter->hasNext()) {
+                if (outIter->curr() == opIter->curr())
+                    opGradIter->curr() += outGradIter->curr();
+
+                if (opGradIter->count() > lastDim && (opGradIter->count() - 1) % lastDim == 0) {
+                    outIter->next();
+                    outGradIter->next();
+                }
+
+                opIter->next();
+                opGradIter->next();
+            }
+        }
+    }
+
     void PermOp::forward() {
         tensor->vec = operand->vec;
     }
@@ -630,7 +786,7 @@ namespace Toygrad::Tensor {
         // z = max(x, 0)
         // dx += dz * 1 if x > 0 else 0
 
-        for (outGradIter->start(), opIter->next(), opGradIter->start();
+        for (outGradIter->start(), opIter->start(), opGradIter->start();
              outGradIter->hasNext();
              outGradIter->next(), opIter->next(), opGradIter->next()) {
             opGradIter->curr() += outGradIter->curr() * static_cast<real>(opIter->curr() > 0.f);
@@ -650,17 +806,16 @@ namespace Toygrad::Tensor {
     void SigmoidOp::backward() {
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
-        IterPtr opIter = initIter(operand.get());
+        IterPtr outIter = initIter(tensor);
         IterPtr opGradIter = initIter(operand->grad.get());
 
         // z = 1/(1+exp(-x))
         // dx += dz*z*(1-z)
 
-        for (outGradIter->start(), opIter->next(), opGradIter->start();
+        for (outGradIter->start(), outIter->start(), opGradIter->start();
              outGradIter->hasNext();
-             outGradIter->next(), opIter->next(), opGradIter->next()) {
-            real sigm = 1.f / (1.f + exp(-opIter->curr()));
-            opGradIter->curr() += outGradIter->curr() * sigm * (1 - sigm);
+             outGradIter->next(), outIter->next(), opGradIter->next()) {
+            opGradIter->curr() += outGradIter->curr() * outIter->curr() * (1 - outIter->curr());
         }
     }
 

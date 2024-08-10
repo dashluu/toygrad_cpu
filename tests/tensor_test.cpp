@@ -199,3 +199,17 @@ TEST(TensorTestFixture, softmaxTensor2) {
     auto t2 = t1->softmax(1);
     std::cout << "Softmax:" << std::endl << *t2 << std::endl;
 }
+
+TEST(TensorTestFixture, softmaxTensor3) {
+    std::cout << std::endl << "Softmax tensor 3:" << std::endl;
+    std::vector<size_t> v = {2, 3, 4};
+    Range r1 = {0, 2, 1};
+    Range r2 = {1, 3, 2};
+    Range r3 = {0, 4, 2};
+    std::vector<Range> q1 = {r1, r2, r3};
+    Shape s1(v);
+    auto t1 = Tensor::arange(s1, 0);
+    std::cout << "Original:" << std::endl << *t1 << std::endl;
+    auto t2 = t1->at(q1)->softmax(0);
+    std::cout << "Softmax:" << std::endl << *t2 << std::endl;
+}

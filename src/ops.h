@@ -16,7 +16,7 @@ namespace Toygrad::Tensor {
         INDEX, CONST, ARANGE, FROM_ARR, RANDINT, RANDN,
         ADD, SUB, MUL, DIV, POW, LOG, SIN, COS, EXP, RECIP, NEG, SQ, SQRT,
         ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, ALIAS, PERM,
-        EQ, NEQ, LESS, GREATER, LEQ, GEQ,
+        EQ, NEQ, LESS, GREATER, LEQ, GEQ, MAX, MIN,
         RELU, SUM, SIGMOID, SOFTMAX,
         COPY
     };
@@ -321,6 +321,28 @@ namespace Toygrad::Tensor {
         }
 
         void forward() override;
+    };
+
+    struct MaxOp final : UnOp {
+        int dim;
+
+        MaxOp(const TensorPtr &operand, Tensor *tensor, int dim): UnOp(OpName::MAX, operand, tensor), dim(dim) {
+        }
+
+        void forward() override;
+
+        void backward() override;
+    };
+
+    struct MinOp final : UnOp {
+        int dim;
+
+        MinOp(const TensorPtr &operand, Tensor *tensor, int dim): UnOp(OpName::MIN, operand, tensor), dim(dim) {
+        }
+
+        void forward() override;
+
+        void backward() override;
     };
 
     struct PermOp final : UnOp {

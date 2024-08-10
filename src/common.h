@@ -52,6 +52,8 @@ namespace Toygrad::Tensor {
     struct GreaterOp;
     struct LeqOp;
     struct GeqOp;
+    struct MaxOp;
+    struct MinOp;
     struct PermOp;
     struct ReluOp;
     struct SigmoidOp;
