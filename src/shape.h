@@ -53,6 +53,12 @@ namespace Toygrad::Tensor {
             strides = shape.strides;
         }
 
+        void remove(int dim) {
+            view.erase(view.begin() + dim, view.begin() + dim + 1);
+            strides.erase(strides.begin() + dim, strides.begin() + dim + 1);
+            ranges.erase(ranges.begin() + dim, ranges.begin() + dim + 1);
+        }
+
         Shape perm(const std::vector<size_t> &shapePerm) const {
             Shape shape(*this);
 
@@ -109,6 +115,30 @@ namespace Toygrad::Tensor {
 
         std::vector<size_t>::iterator end() {
             return view.end();
+        }
+
+        std::vector<size_t>::const_iterator cbegin() const {
+            return view.cbegin();
+        }
+
+        std::vector<size_t>::const_iterator cend() const {
+            return view.cend();
+        }
+
+        std::vector<size_t>::reverse_iterator rbegin() {
+            return view.rbegin();
+        }
+
+        std::vector<size_t>::reverse_iterator rend() {
+            return view.rend();
+        }
+
+        std::vector<size_t>::const_reverse_iterator crbegin() const {
+            return view.crbegin();
+        }
+
+        std::vector<size_t>::const_reverse_iterator crend() const {
+            return view.crend();
         }
     };
 }

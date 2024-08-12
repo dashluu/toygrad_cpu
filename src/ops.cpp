@@ -396,16 +396,16 @@ namespace Toygrad::Tensor {
     void ExpOp::backward() {
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
-        IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
         IterPtr opGradIter = initIter(operand->grad.get());
 
         // z = e^x
         // dx += dz * e^x
 
-        for (outGradIter->start(), outIter->start(), opGradIter->start();
+        for (outGradIter->start(), opIter->start(), opGradIter->start();
              outGradIter->hasNext();
-             outGradIter->next(), outIter->next(), opGradIter->next()) {
-            opGradIter->curr() += outGradIter->curr() * outIter->curr();
+             outGradIter->next(), opIter->next(), opGradIter->next()) {
+            opGradIter->curr() += outGradIter->curr() * exp(opIter->curr());
         }
     }
 
@@ -500,16 +500,16 @@ namespace Toygrad::Tensor {
     void SqrtOp::backward() {
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
-        IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
         IterPtr opGradIter = initIter(operand->grad.get());
 
         // z = sqrt(x)
         // dx += dz * 1 / (2 * sqrt(x))
 
-        for (outGradIter->start(), outIter->start(), opGradIter->start();
+        for (outGradIter->start(), opIter->start(), opGradIter->start();
              outGradIter->hasNext();
-             outGradIter->next(), outIter->next(), opGradIter->next()) {
-            opGradIter->curr() += outGradIter->curr() / (2 * outIter->curr());
+             outGradIter->next(), opIter->next(), opGradIter->next()) {
+            opGradIter->curr() += outGradIter->curr() / (2 * sqrt(opIter->curr()));
         }
     }
 
@@ -806,16 +806,17 @@ namespace Toygrad::Tensor {
     void SigmoidOp::backward() {
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
-        IterPtr outIter = initIter(tensor);
+        IterPtr opIter = initIter(operand.get());
         IterPtr opGradIter = initIter(operand->grad.get());
 
-        // z = 1/(1+exp(-x))
-        // dx += dz*z*(1-z)
+        // z = 1 / (1 + exp(-x))
+        // dx += dz * z * (1 - z)
 
-        for (outGradIter->start(), outIter->start(), opGradIter->start();
+        for (outGradIter->start(), opIter->start(), opGradIter->start();
              outGradIter->hasNext();
-             outGradIter->next(), outIter->next(), opGradIter->next()) {
-            opGradIter->curr() += outGradIter->curr() * outIter->curr() * (1 - outIter->curr());
+             outGradIter->next(), opIter->next(), opGradIter->next()) {
+            real sigmoid = 1 / (1 + exp(-opIter->curr()));
+            opGradIter->curr() += outGradIter->curr() * sigmoid * (1 - sigmoid);
         }
     }
 

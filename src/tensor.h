@@ -85,6 +85,10 @@ namespace Toygrad::Tensor {
             }
         }
 
+        bool isDimValid(int dim) const {
+            return dim >= -1 && dim < static_cast<int>(shape.getNumDims());
+        }
+
     public:
         explicit Tensor(const Shape &shape);
 
@@ -109,6 +113,26 @@ namespace Toygrad::Tensor {
         }
 
         bool isContiguous() const;
+
+        bool isBroadcastableTo(const Shape &target) const;
+
+        TensorPtr broadcastTo(const Shape &target);
+
+        TensorPtr alias();
+
+        TensorPtr copy();
+
+        bool isSqueezable(int dim = -1) const;
+
+        TensorPtr squeeze(int dim = -1);
+
+        /**
+         * Inserts(before) a dimension of size one at a position.
+         * @param dim the dimension at which dimension of size one to be inserted. If dim is -1, it inserts the new
+         * dimension at the end.
+         * @return a new tensor with a dimension of size one inserted at the specified position.
+         */
+        TensorPtr unsqueeze(int dim = -1);
 
         TensorPtr at(const std::vector<size_t> &idx);
 
@@ -214,7 +238,7 @@ namespace Toygrad::Tensor {
 
         TensorPtr softmax(int dim = -1);
 
-        TensorPtr reshape(const Shape &shape);
+        TensorPtr reshape(const Shape &target);
 
         TensorPtr sum(int dim = -1);
 

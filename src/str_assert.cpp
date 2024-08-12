@@ -14,4 +14,6 @@ namespace Toygrad::Tensor {
             "Matrix multiplication can only be applied on tensors with 2d or above";
     const std::string AssertMessage::invalidShapePerm = "Invalid shape permutation";
     const std::string AssertMessage::invalidDim = "Invalid dimension";
+    const std::string AssertMessage::notBroadcastable = "Tensors are not broadcastable";
+    const std::string AssertMessage::notSqueezable = "Tensors are not squeezable";
 }

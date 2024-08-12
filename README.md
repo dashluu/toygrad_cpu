@@ -68,6 +68,8 @@ cmake --build build
 - [x] shape permutation
 - [x] transpose
 - [x] max, min
+- [x] broadcasting
+- [ ] squeeze, unsqueeze
 - [x] sum
 - [x] relu
 - [x] sigmoid

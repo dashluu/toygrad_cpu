@@ -124,6 +124,125 @@ namespace Toygrad::Tensor {
                                    [](const Range &range) { return range.step > 1; });
     }
 
+    bool Tensor::isBroadcastableTo(const Shape &target) const {
+        if (shape.getNumDims() > target.getNumDims()) {
+            return false;
+        }
+
+        for (auto shapeIter = shape.crbegin(), targetIter = target.crbegin();
+             shapeIter != shape.crend() && targetIter != target.crend();
+             ++shapeIter, ++targetIter) {
+            if (*shapeIter != 1 && *shapeIter != *targetIter) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    TensorPtr Tensor::broadcastTo(const Shape &target) {
+        assert(str_assert(isBroadcastableTo(target), AssertMessage::notBroadcastable));
+        Shape outShape;
+        outShape.offset = shape.offset;
+        outShape.view = shape.view;
+        size_t dimsToAdd = target.getNumDims() - outShape.getNumDims();
+
+        for (size_t i = 0; i < dimsToAdd; i++) {
+            outShape.view.insert(outShape.view.begin(), 1);
+        }
+
+        outShape.defStrides();
+
+        for (int i = target.getNumDims() - 1; i >= 0; i--) {
+            if (outShape.view[i] < target.view[i]) {
+                // outShape.view[i] == 1
+                outShape.view[i] = target.view[i];
+                outShape.strides[i] = 0;
+            }
+        }
+
+        outShape.defRanges();
+        auto outTensor = std::make_shared<Tensor>(outShape);
+        outTensor->ops.push_back(new AliasOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
+        return outTensor;
+    }
+
+    TensorPtr Tensor::alias() {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->ops.push_back(new AliasOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
+        return outTensor;
+    }
+
+    TensorPtr Tensor::copy() {
+        auto outTensor = std::make_shared<Tensor>(shape);
+        outTensor->ops.push_back(new CopyOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
+        return outTensor;
+    }
+
+    bool Tensor::isSqueezable(int dim) const {
+        if (!isDimValid(dim)) {
+            return false;
+        }
+
+        if (dim != -1) {
+            return shape.view[dim] == 1 ? shape.getNumDims() > 1 : true;
+        }
+
+        size_t dimsToSqueeze = 0;
+
+        for (auto shapeIter = shape.cbegin(); shapeIter != shape.cend(); ++shapeIter) {
+            if (*shapeIter == 1) {
+                dimsToSqueeze++;
+            }
+        }
+
+        return shape.getNumDims() > dimsToSqueeze;
+    }
+
+    TensorPtr Tensor::squeeze(int dim) {
+        Shape outShape;
+
+        if (dim != -1) {
+            assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
+            outShape = shape;
+
+            if (outShape[dim] == 1) {
+                outShape.remove(dim);
+            }
+        } else {
+            assert(str_assert(isSqueezable(dim), AssertMessage::notSqueezable));
+            outShape = shape;
+            int i = 0;
+
+            while (i < outShape.getNumDims()) {
+                if (outShape[i] == 1) {
+                    outShape.remove(i);
+                } else {
+                    i++;
+                }
+            }
+        }
+
+        auto outTensor = std::make_shared<Tensor>(outShape);
+        outTensor->ops.push_back(new AliasOp(shared_from_this(), outTensor.get()));
+        outTensor->ops.back()->forward();
+        return outTensor;
+    }
+
+    TensorPtr Tensor::unsqueeze(int dim) {
+        assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
+        Shape outShape = shape;
+
+        if (dim == -1) {
+            outShape.view.push_back(1);
+            outShape.strides.push_back(1);
+            outShape.ranges.push_back(Range(0, 1, 1));
+        }
+    }
+
     TensorPtr Tensor::at(const std::vector<size_t> &idx) {
         return index(idx);
     }
@@ -448,7 +567,7 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::softmax(int dim) {
-        assert(str_assert(dim >= -1 && dim < static_cast<int>(shape.getNumDims()), AssertMessage::invalidDim));
+        assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
         TensorPtr outTensor;
 
         if (dim == -1) {
@@ -484,17 +603,17 @@ namespace Toygrad::Tensor {
         return outTensor;
     }
 
-    TensorPtr Tensor::reshape(const Shape &shape) {
-        assert(str_assert(shape.getSize() == this->shape.getSize(), AssertMessage::shapesMismatched));
+    TensorPtr Tensor::reshape(const Shape &target) {
+        assert(str_assert(target.getSize() == this->shape.getSize(), AssertMessage::shapesMismatched));
         TensorPtr outTensor;
 
         if (isContiguous()) {
-            outTensor = std::make_shared<Tensor>(shape);
+            outTensor = std::make_shared<Tensor>(target);
             outTensor->shape.offset = this->shape.offset;
             outTensor->ops.push_back(new AliasOp(shared_from_this(), outTensor.get()));
             outTensor->ops.back()->forward();
         } else {
-            outTensor = std::make_shared<Tensor>(shape);
+            outTensor = std::make_shared<Tensor>(target);
             outTensor->ops.push_back(new CopyOp(shared_from_this(), outTensor.get()));
             outTensor->ops.back()->forward();
         }
@@ -503,7 +622,7 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::sum(int dim) {
-        assert(str_assert(dim >= -1 && dim < static_cast<int>(shape.getNumDims()), AssertMessage::invalidDim));
+        assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
         TensorPtr outTensor;
 
         if (dim == -1) {

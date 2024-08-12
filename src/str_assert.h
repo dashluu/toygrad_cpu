@@ -16,6 +16,8 @@ namespace Toygrad::Tensor {
         static const std::string matmulOnLessThan2d;
         static const std::string invalidShapePerm;
         static const std::string invalidDim;
+        static const std::string notBroadcastable;
+        static const std::string notSqueezable;
     };
 
     inline bool str_assert(bool assertion, const std::string &message) {
