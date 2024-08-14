@@ -11,61 +11,58 @@ namespace Toygrad::Tensor {
 
         Shape() = default;
 
-        void defStrides() {
-            // Update strides
-            strides.resize(view.size());
+        void initStridesHelper(std::vector<size_t> &target) const {
+            target.resize(view.size());
+            target[view.size() - 1] = 1;
             size_t stride = 1;
 
             for (int i = view.size() - 2; i >= 0; i--) {
                 stride *= view[i + 1];
-                strides[i] = stride;
+                target[i] = stride;
             }
-
-            strides[view.size() - 1] = 1;
         }
 
-        void defRanges() {
-            ranges.resize(view.size());
+        void initStrides() {
+            initStridesHelper(strides);
+        }
 
-            for (size_t i = 0; i < view.size(); i++) {
-                ranges[i] = {0, view[i], 1};
-            }
+        void initVStrides() {
+            initStridesHelper(vstrides);
         }
 
     public:
-        std::vector<Range> ranges;
         size_t offset = 0;
         std::vector<size_t> view;
         std::vector<size_t> strides;
+        std::vector<size_t> vstrides;
 
         Shape(size_t offset, const std::vector<size_t> &view): offset(offset), view(view) {
-            defStrides();
-            defRanges();
+            initStrides();
         }
 
         explicit Shape(const std::vector<size_t> &view): Shape(0, view) {
         }
 
         Shape(const Shape &shape) {
-            ranges = shape.ranges;
             offset = shape.offset;
             view = shape.view;
             strides = shape.strides;
+            vstrides = shape.vstrides;
         }
 
-        void remove(int dim) {
+        void remove(size_t dim) {
             view.erase(view.begin() + dim, view.begin() + dim + 1);
             strides.erase(strides.begin() + dim, strides.begin() + dim + 1);
-            ranges.erase(ranges.begin() + dim, ranges.begin() + dim + 1);
+            vstrides.erase(vstrides.begin() + dim, vstrides.begin() + dim + 1);
         }
 
         Shape perm(const std::vector<size_t> &shapePerm) const {
             Shape shape(*this);
 
             for (size_t i = 0; i < shapePerm.size(); i++) {
-                shape.ranges[i] = ranges[shapePerm[i]];
                 shape.view[i] = view[shapePerm[i]];
                 shape.strides[i] = strides[shapePerm[i]];
+                shape.vstrides[i] = vstrides[shapePerm[i]];
             }
 
             return shape;
@@ -84,10 +81,10 @@ namespace Toygrad::Tensor {
                 return *this;
             }
 
-            ranges = rhs.ranges;
             offset = rhs.offset;
             view = rhs.view;
             strides = rhs.strides;
+            vstrides = rhs.vstrides;
             return *this;
         }
 

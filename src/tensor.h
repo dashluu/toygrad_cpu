@@ -89,8 +89,14 @@ namespace Toygrad::Tensor {
             return dim >= -1 && dim < static_cast<int>(shape.getNumDims());
         }
 
+        TensorPtr perm(const Shape &target);
+
+        TensorPtr alias(const Shape &target);
+
+        // Shape getNewShape();
+
     public:
-        explicit Tensor(const Shape &shape);
+        explicit Tensor(const Shape &shape, bool newTensor = true);
 
         Tensor(const Tensor &tensor) = delete;
 
@@ -112,6 +118,10 @@ namespace Toygrad::Tensor {
             return vec;
         }
 
+        /**
+         * Checks if the tensor's memory is contiguous.
+         * @return true if the underlying memory is contiguous and false otherwise.
+         */
         bool isContiguous() const;
 
         bool isBroadcastableTo(const Shape &target) const;
@@ -242,9 +252,11 @@ namespace Toygrad::Tensor {
 
         TensorPtr sum(int dim = -1);
 
-        TensorPtr perm(const std::vector<size_t> &shapePerm);
+        TensorPtr max(int dim = -1);
 
-        TensorPtr perm(const Shape &target);
+        TensorPtr min(int dim = -1);
+
+        TensorPtr perm(const std::vector<size_t> &shapePerm);
 
         TensorPtr T();
 

@@ -200,19 +200,19 @@ TEST(TensorTestFixture, softmaxTensor2) {
     std::cout << "Softmax:" << std::endl << *t2 << std::endl;
 }
 
-// TEST(TensorTestFixture, softmaxTensor3) {
-//     std::cout << std::endl << "Softmax tensor 3:" << std::endl;
-//     std::vector<size_t> v = {2, 3, 4};
-//     Range r1 = {0, 2, 1};
-//     Range r2 = {1, 3, 2};
-//     Range r3 = {0, 4, 2};
-//     std::vector<Range> q1 = {r1, r2, r3};
-//     Shape s1(v);
-//     auto t1 = Tensor::arange(s1, 0);
-//     std::cout << "Original:" << std::endl << *t1 << std::endl;
-//     auto t2 = t1->at(q1)->softmax(0);
-//     std::cout << "Softmax:" << std::endl << *t2 << std::endl;
-// }
+TEST(TensorTestFixture, softmaxTensor3) {
+    std::cout << std::endl << "Softmax tensor 3:" << std::endl;
+    std::vector<size_t> v = {2, 3, 4};
+    Range r1 = {0, 2, 1};
+    Range r2 = {1, 3, 2};
+    Range r3 = {0, 4, 2};
+    std::vector<Range> q1 = {r1, r2, r3};
+    Shape s1(v);
+    auto t1 = Tensor::arange(s1, 0);
+    std::cout << "Original:" << std::endl << *t1 << std::endl;
+    auto t2 = t1->at(q1)->softmax(0);
+    std::cout << "Softmax:" << std::endl << *t2 << std::endl;
+}
 
 TEST(TensorTestFixture, broadcastTensor1) {
     std::cout << std::endl << "Broadcast tensor 1:" << std::endl;
@@ -260,6 +260,17 @@ TEST(TensorTestFixture, broadcastTensor1) {
     real d8[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
     auto x8 = Tensor::fromArr(s8, d8);
     assertEqTemplate(*t8, *x8);
+
+    std::vector<size_t> v9 = {2, 4, 1};
+    Shape s9(v9);
+    auto t9 = Tensor::arange(s9, 0);
+    std::cout << "Original:" << std::endl << *t9 << std::endl;
+    std::vector<size_t> v10 = {2, 4, 3};
+    Shape s10(v10);
+    auto t10 = t9->broadcastTo(s10);
+    real d10[] = {0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7};
+    auto x10 = Tensor::fromArr(s10, d10);
+    assertEqTemplate(*t10, *x10);
 }
 
 TEST(TensorTestFixture, broadcastTensor2) {
@@ -278,12 +289,12 @@ TEST(TensorTestFixture, broadcastTensor2) {
 
     std::vector<size_t> v3 = {1};
     Shape s3(v3);
-    auto t3 = Tensor::arange(s3, 0);
+    auto t3 = Tensor::arange(s3, 11);
     std::cout << "Original:" << std::endl << *t3 << std::endl;
-    std::vector<size_t> v4 = {2, 3, 4};
+    std::vector<size_t> v4 = {3, 4};
     Shape s4(v4);
     auto t4 = t3->broadcastTo(s4);
-    real d4[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    real d4[] = {11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11};
     auto x4 = Tensor::fromArr(s4, d4);
     assertEqTemplate(*t4, *x4);
 }
@@ -379,4 +390,30 @@ TEST(TensorTestFixture, squeeze2) {
     auto t4 = Tensor::arange(s4, 0);
     std::cout << "Original:" << std::endl << *t4 << std::endl;
     ASSERT_EQ(true, t3->isSqueezable(0));
+}
+
+TEST(TensorTestFixture, unsqueeze1) {
+    std::cout << std::endl << "Unsqueeze 1:" << std::endl;
+
+    std::vector<size_t> v1 = {2, 3, 4};
+    Shape s1(v1);
+    auto t1 = Tensor::arange(s1, 0);
+    std::cout << "Original:" << std::endl << *t1 << std::endl;
+    std::vector<size_t> v2 = {2, 3, 4, 1};
+    Shape s2(v2);
+    auto t2 = t1->unsqueeze(-1);
+    real d2[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23};
+    auto x2 = Tensor::fromArr(s2, d2);
+    assertEqTemplate(*t2, *x2);
+
+    std::vector<size_t> v3 = {2, 3, 4};
+    Shape s3(v3);
+    auto t3 = Tensor::arange(s3, 0);
+    std::cout << "Original:" << std::endl << *t3 << std::endl;
+    std::vector<size_t> v4 = {2, 1, 3, 4};
+    Shape s4(v4);
+    auto t4 = t3->unsqueeze(1);
+    real d4[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23};
+    auto x4 = Tensor::fromArr(s4, d4);
+    assertEqTemplate(*t4, *x4);
 }
