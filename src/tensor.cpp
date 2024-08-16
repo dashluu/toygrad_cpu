@@ -12,8 +12,8 @@ namespace Toygrad::Tensor {
         id = idCounter++;
     }
 
-    Tensor::Tensor(const Shape &shape, bool newTensor) : Tensor() {
-        this->shape = newTensor ? Shape(0, shape.view) : shape;
+    Tensor::Tensor(const Shape &shape, bool initStrides) : Tensor() {
+        this->shape = initStrides ? Shape(0, shape.view) : shape;
     }
 
     Tensor::~Tensor() {
@@ -21,10 +21,6 @@ namespace Toygrad::Tensor {
         for (const auto &op: ops) delete op;
         ops.clear();
     }
-
-    // Shape Tensor::getNewShape() {
-    //
-    // }
 
     std::ostream &operator<<(std::ostream &stream, Tensor &tensor) {
         IterPtr iter = initIter(&tensor);
@@ -600,20 +596,22 @@ namespace Toygrad::Tensor {
             auto permTensor = perm(permShape);
             // std::cout << std::endl << "Perm:" << std::endl << *permTensor << std::endl;
             // Compute softmax
-            int lastDim = shape.getNumDims() - 1;
-            auto maxTensor = permTensor->max(lastDim)->unsqueeze()->broadcastTo(permShape);
+            auto maxTensor = permTensor->max(shape.getNumDims() - 1)->unsqueeze()->broadcastTo(permShape);
             // std::cout << std::endl << "Max:" << std::endl << *maxTensor << std::endl;
             auto subTensor = permTensor->sub(maxTensor);
             // std::cout << std::endl << "Sub:" << std::endl << *subTensor << std::endl;
             auto expTensor = subTensor->exp();
             // std::cout << std::endl << "Exp:" << std::endl << *expTensor << std::endl;
-            auto sumTensor = expTensor->sum(lastDim)->unsqueeze()->broadcastTo(permShape);
+            auto sumTensor = expTensor->sum(shape.getNumDims() - 1)->unsqueeze()->broadcastTo(expTensor->shape);
             // std::cout << std::endl << "Sum:" << std::endl << *sumTensor << std::endl;
             auto softmaxTensor = expTensor->div(sumTensor);
             // std::cout << std::endl << "Softmax:" << std::endl << *softmaxTensor << std::endl;
             // Permute softmax
-            Shape outShape(0, shape.view);
-            outTensor = softmaxTensor->perm(outShape);
+            std::iota(shapePerm.begin(), shapePerm.end(), 0);
+            size_t lastDim = shapePerm[shapePerm.size() - 1];
+            shapePerm.erase(shapePerm.end() - 1);
+            shapePerm.insert(shapePerm.begin() + dim, lastDim);
+            outTensor = softmaxTensor->perm(shapePerm);
         }
 
         return outTensor;

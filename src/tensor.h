@@ -93,10 +93,8 @@ namespace Toygrad::Tensor {
 
         TensorPtr alias(const Shape &target);
 
-        // Shape getNewShape();
-
     public:
-        explicit Tensor(const Shape &shape, bool newTensor = true);
+        explicit Tensor(const Shape &shape, bool initStrides = true);
 
         Tensor(const Tensor &tensor) = delete;
 

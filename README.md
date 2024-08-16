@@ -77,7 +77,7 @@ cmake --build build
   non-contiguous
 - [ ] stack
 - [ ] cat
-- [ ] softmax
+- [x] softmax
 - [ ] matmul
 
 ## Code
