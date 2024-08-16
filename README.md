@@ -3,7 +3,7 @@
 ## Introduction
 
 A simple and toy framework similar to PyTorch written in C++ 20. Currently, it only works on CPU and is not optimized
-for performance.
+for performance. There are still bugs internally so this project is not intended to be used in production.
 
 ## Acknowledgements
 
