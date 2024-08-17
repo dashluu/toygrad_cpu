@@ -20,24 +20,6 @@ for performance. There are still bugs internally so this project is not intended
 
 ## Quick start
 
-For the CMAKE file, we can ignore the tests directory since it is used for testing only. Hence, we can comment out the
-following line in the main CMAKE file:
-
-```
-cmake_minimum_required(VERSION 3.28)
-project(toygrad_cpu)
-
-set(CMAKE_CXX_STANDARD 20)
-
-include_directories(src)
-add_subdirectory(src)
-// add_subdirectory(tests)
-add_executable(toygrad_cpu main.cpp)
-target_link_libraries(toygrad_cpu toygrad_cpu_lib)
-```
-
-and remove the `tests` folder.
-
 You can build using the following command in the project folder:
 
 ```
