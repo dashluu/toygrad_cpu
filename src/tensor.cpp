@@ -24,14 +24,7 @@ namespace Toygrad::Tensor {
 
     std::ostream &operator<<(std::ostream &stream, Tensor &tensor) {
         IterPtr iter = initIter(&tensor);
-        std::vector<size_t> subsize(tensor.shape.getNumDims());
-        size_t tmp = 1;
-
-        for (int i = subsize.size() - 1; i >= 0; i--) {
-            tmp *= tensor.shape[i];
-            subsize[i] = tmp;
-        }
-
+        std::vector<size_t> sizePerDim = tensor.shape.getSizePerDim();
         iter->start();
         bool flag = iter->hasNext();
 
@@ -51,8 +44,8 @@ namespace Toygrad::Tensor {
             stream << iter->curr();
             size_t close = 0;
 
-            for (int i = subsize.size() - 1; i >= 0; i--) {
-                if (iter->count() % subsize[i] == 0) {
+            for (int i = sizePerDim.size() - 1; i >= 0; i--) {
+                if (iter->count() % sizePerDim[i] == 0) {
                     stream << "]";
                     close++;
                 }
@@ -121,16 +114,7 @@ namespace Toygrad::Tensor {
     }
 
     bool Tensor::isContiguous() const {
-        // TODO: reimplement method
-        // // Check if the strides are in non-increasing order and none of the dimension is 0
-        // for (size_t i = 1; i < shape.getNumDims(); i++) {
-        //     if (shape.strides[i] > shape.strides[i - 1] || shape.strides[i] == 0) {
-        //         return false;
-        //     }
-        // }
-        //
-        // return true;
-        return false;
+        return shape.strides == shape.getContiguousStrides();
     }
 
     bool Tensor::isBroadcastableTo(const Shape &target) const {

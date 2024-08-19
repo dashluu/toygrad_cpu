@@ -49,6 +49,30 @@ namespace Toygrad::Tensor {
             strides.erase(strides.begin() + dim);
         }
 
+        std::vector<size_t> getContiguousStrides() const {
+            std::vector<size_t> contiguousStrides(view.size());
+            size_t stride = 1;
+
+            for (int i = contiguousStrides.size() - 1; i >= 0; i--) {
+                contiguousStrides[i] = stride;
+                stride *= view[i];
+            }
+
+            return contiguousStrides;
+        }
+
+        std::vector<size_t> getSizePerDim() const {
+            std::vector<size_t> sizePerDim(view.size());
+            size_t size = 1;
+
+            for (int i = sizePerDim.size() - 1; i >= 0; i--) {
+                size *= view[i];
+                sizePerDim[i] = size;
+            }
+
+            return sizePerDim;
+        }
+
         Shape perm(const std::vector<size_t> &shapePerm) const {
             Shape shape(*this);
 
