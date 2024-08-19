@@ -28,7 +28,7 @@ namespace Toygrad::Tensor {
         size_t tmp = 1;
 
         for (int i = subsize.size() - 1; i >= 0; i--) {
-            tmp *= tensor.shape.view[i];
+            tmp *= tensor.shape[i];
             subsize[i] = tmp;
         }
 
@@ -77,25 +77,30 @@ namespace Toygrad::Tensor {
         return stream;
     }
 
-    TensorPtr Tensor::index(const std::vector<size_t> &idx) {
-        assert(str_assert(shape.getNumDims() > idx.size(), AssertMessage::indexMultidimsOnly));
+    TensorPtr Tensor::index(const std::vector<size_t> &indices) {
+        // Multidimensional tensor
+        assert(str_assert(shape.getNumDims() >= indices.size(), AssertMessage::indexMultidimsOnly));
 
         // Index must stay within bounds
-        for (size_t i = 0; i < idx.size(); i++) {
-            assert(str_assert(idx[i] < shape.view[i], AssertMessage::indexOutOfBounds));
+        for (size_t i = 0; i < indices.size(); i++) {
+            assert(str_assert(indices[i] < shape[i], AssertMessage::indexOutOfBounds));
+        }
+
+        auto outShape = shape;
+
+        for (size_t idx: indices) {
+            outShape.offset += idx * outShape.strides[0];
+            outShape.remove(0);
         }
 
         auto ranges = std::vector<Range>();
 
-        for (size_t i: idx) {
-            ranges.push_back({i, i + 1, 1});
-        }
-
-        for (size_t i = idx.size(); i < shape.getNumDims(); i++) {
+        for (size_t i = indices.size(); i < shape.getNumDims(); i++) {
             ranges.push_back({0, shape[i], 1});
         }
 
-        return index(ranges);
+        auto outTensor = alias(outShape);
+        return outTensor->index(ranges);
     }
 
     TensorPtr Tensor::index(const std::vector<Range> &ranges) {
@@ -116,17 +121,23 @@ namespace Toygrad::Tensor {
     }
 
     bool Tensor::isContiguous() const {
-        // Check if the strides are in non-increasing order and none of the dimension is 0
-        for (size_t i = 1; i < shape.getNumDims(); i++) {
-            if (shape.strides[i] > shape.strides[i - 1] || shape.strides[i] == 0) {
-                return false;
-            }
-        }
-
-        return true;
+        // TODO: reimplement method
+        // // Check if the strides are in non-increasing order and none of the dimension is 0
+        // for (size_t i = 1; i < shape.getNumDims(); i++) {
+        //     if (shape.strides[i] > shape.strides[i - 1] || shape.strides[i] == 0) {
+        //         return false;
+        //     }
+        // }
+        //
+        // return true;
+        return false;
     }
 
     bool Tensor::isBroadcastableTo(const Shape &target) const {
+        if (shape == target) {
+            return true;
+        }
+
         if (shape.getNumDims() > target.getNumDims()) {
             return false;
         }
@@ -143,6 +154,10 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::broadcastTo(const Shape &target) {
+        if (shape == target) {
+            return shared_from_this();
+        }
+
         assert(str_assert(isBroadcastableTo(target), AssertMessage::notBroadcastable));
         Shape outShape;
         outShape.offset = shape.offset;
@@ -247,8 +262,12 @@ namespace Toygrad::Tensor {
         return alias(outShape);
     }
 
-    TensorPtr Tensor::at(const std::vector<size_t> &idx) {
-        return index(idx);
+    TensorPtr Tensor::at(size_t idx) {
+        return index({idx});
+    }
+
+    TensorPtr Tensor::at(const std::vector<size_t> &indices) {
+        return index(indices);
     }
 
     TensorPtr Tensor::at(const std::vector<Range> &ranges) {
@@ -304,14 +323,15 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::operator[](size_t idx) {
-        auto outTensor = index(std::vector(1, idx));
+        auto outTensor = at(idx);
         return outTensor;
     }
 
     TensorPtr Tensor::add(const TensorPtr &rhs) {
-        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs->broadcastTo(shape);
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new AddOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.push_back(new AddOp(shared_from_this(), broadcastedRhs, outTensor.get()));
         outTensor->ops.back()->forward();
         return outTensor;
     }
@@ -321,9 +341,10 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::sub(const TensorPtr &rhs) {
-        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs->broadcastTo(shape);
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new SubOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.push_back(new SubOp(shared_from_this(), broadcastedRhs, outTensor.get()));
         outTensor->ops.back()->forward();
         return outTensor;
     }
@@ -333,9 +354,10 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::mul(const TensorPtr &rhs) {
-        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs->broadcastTo(shape);
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new MulOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.push_back(new MulOp(shared_from_this(), broadcastedRhs, outTensor.get()));
         outTensor->ops.back()->forward();
         return outTensor;
     }
@@ -345,9 +367,10 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::div(const TensorPtr &rhs) {
-        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs->broadcastTo(shape);
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new DivOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.push_back(new DivOp(shared_from_this(), broadcastedRhs, outTensor.get()));
         outTensor->ops.back()->forward();
         return outTensor;
     }
@@ -420,9 +443,10 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::eq(const TensorPtr &rhs) {
-        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs->broadcastTo(shape);
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new EqOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.push_back(new EqOp(shared_from_this(), broadcastedRhs, outTensor.get()));
         outTensor->ops.back()->forward();
         return outTensor;
     }
@@ -450,9 +474,10 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::neq(const TensorPtr &rhs) {
-        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs->broadcastTo(shape);
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new NeqOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.push_back(new NeqOp(shared_from_this(), broadcastedRhs, outTensor.get()));
         outTensor->ops.back()->forward();
         return outTensor;
     }
@@ -466,9 +491,10 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::lt(const TensorPtr &rhs) {
-        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs->broadcastTo(shape);
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new LessOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.push_back(new LessOp(shared_from_this(), broadcastedRhs, outTensor.get()));
         outTensor->ops.back()->forward();
         return outTensor;
     }
@@ -478,9 +504,10 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::gt(const TensorPtr &rhs) {
-        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs->broadcastTo(shape);
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new GreaterOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.push_back(new GreaterOp(shared_from_this(), broadcastedRhs, outTensor.get()));
         outTensor->ops.back()->forward();
         return outTensor;
     }
@@ -490,9 +517,10 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::leq(const TensorPtr &rhs) {
-        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs->broadcastTo(shape);
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new LeqOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.push_back(new LeqOp(shared_from_this(), broadcastedRhs, outTensor.get()));
         outTensor->ops.back()->forward();
         return outTensor;
     }
@@ -502,9 +530,10 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::geq(const TensorPtr &rhs) {
-        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
+        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs->broadcastTo(shape);
         auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new GeqOp(shared_from_this(), rhs, outTensor.get()));
+        outTensor->ops.push_back(new GeqOp(shared_from_this(), broadcastedRhs, outTensor.get()));
         outTensor->ops.back()->forward();
         return outTensor;
     }
@@ -514,8 +543,9 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::addAssign(const TensorPtr &rhs) {
-        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
-        ops.push_back(new AddAssignOp(rhs, this));
+        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs->broadcastTo(shape);
+        ops.push_back(new AddAssignOp(broadcastedRhs, this));
         ops.back()->forward();
         return shared_from_this();
     }
@@ -525,8 +555,9 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::subAssign(const TensorPtr &rhs) {
-        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
-        ops.push_back(new SubAssignOp(rhs, this));
+        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs->broadcastTo(shape);
+        ops.push_back(new SubAssignOp(broadcastedRhs, this));
         ops.back()->forward();
         return shared_from_this();
     }
@@ -536,8 +567,9 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::mulAssign(const TensorPtr &rhs) {
-        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
-        ops.push_back(new MulAssignOp(rhs, this));
+        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs->broadcastTo(shape);
+        ops.push_back(new MulAssignOp(broadcastedRhs, this));
         ops.back()->forward();
         return shared_from_this();
     }
@@ -547,8 +579,9 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::divAssign(const TensorPtr &rhs) {
-        assert(str_assert(shape == rhs->shape, AssertMessage::shapesMismatched));
-        ops.push_back(new DivAssignOp(rhs, this));
+        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs->broadcastTo(shape);
+        ops.push_back(new DivAssignOp(broadcastedRhs, this));
         ops.back()->forward();
         return shared_from_this();
     }
@@ -576,10 +609,10 @@ namespace Toygrad::Tensor {
         TensorPtr outTensor;
 
         if (dim == -1) {
-            auto maxTensor = max()->broadcastTo(shape);
+            auto maxTensor = max();
             auto subTensor = sub(maxTensor);
             auto expTensor = subTensor->exp();
-            auto sumTensor = expTensor->sum()->broadcastTo(shape);
+            auto sumTensor = expTensor->sum();
             outTensor = expTensor->div(sumTensor);
         } else {
             std::vector<size_t> shapePerm;
@@ -596,13 +629,13 @@ namespace Toygrad::Tensor {
             auto permTensor = perm(permShape);
             // std::cout << std::endl << "Perm:" << std::endl << *permTensor << std::endl;
             // Compute softmax
-            auto maxTensor = permTensor->max(shape.getNumDims() - 1)->unsqueeze()->broadcastTo(permShape);
+            auto maxTensor = permTensor->max(shape.getNumDims() - 1)->unsqueeze();
             // std::cout << std::endl << "Max:" << std::endl << *maxTensor << std::endl;
             auto subTensor = permTensor->sub(maxTensor);
             // std::cout << std::endl << "Sub:" << std::endl << *subTensor << std::endl;
             auto expTensor = subTensor->exp();
             // std::cout << std::endl << "Exp:" << std::endl << *expTensor << std::endl;
-            auto sumTensor = expTensor->sum(shape.getNumDims() - 1)->unsqueeze()->broadcastTo(expTensor->shape);
+            auto sumTensor = expTensor->sum(shape.getNumDims() - 1)->unsqueeze();
             // std::cout << std::endl << "Sum:" << std::endl << *sumTensor << std::endl;
             auto softmaxTensor = expTensor->div(sumTensor);
             // std::cout << std::endl << "Softmax:" << std::endl << *softmaxTensor << std::endl;

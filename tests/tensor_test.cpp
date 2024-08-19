@@ -29,12 +29,12 @@ TEST(TensorTestFixture, indexTensor1) {
     Range r2 = {4, 3, 2};
     Range r3 = {0, 4, 2};
     std::vector<size_t> q1 = {1, 1};
-    std::vector<Range> q2 = {r1, r2, r3};
+    std::vector q2 = {r1, r2, r3};
     Shape s1(v);
     auto t1 = Tensor::arange(s1, 0);
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     auto t2 = t1->at(q1);
-    Shape s2({1, 1, 4});
+    Shape s2({4});
     real d2[] = {16, 17, 18, 19};
     auto x2 = Tensor::fromArr(s2, d2);
     assertEqTemplate(*t2, *x2);
@@ -116,7 +116,7 @@ TEST(TensorTestFixture, sumTensor3) {
     assertEqTemplate(*t2, *x2);
 }
 
-TEST(TensorTestFixture, permuteShape1) {
+TEST(TensorTestFixture, permTensor1) {
     std::cout << std::endl << "Permute shape 1:" << std::endl;
     std::vector<size_t> v = {2, 3, 4};
     Shape s1(v);
@@ -135,7 +135,7 @@ TEST(TensorTestFixture, indexPermTensor1) {
     Range r1 = {0, 2, 1};
     Range r2 = {1, 3, 2};
     Range r3 = {0, 4, 2};
-    std::vector<Range> q2 = {r1, r2, r3};
+    std::vector q2 = {r1, r2, r3};
     Shape s1(v);
     auto t1 = Tensor::arange(s1, 0);
     std::cout << "Original:" << std::endl << *t1 << std::endl;
@@ -150,13 +150,36 @@ TEST(TensorTestFixture, indexPermTensor1) {
     assertEqTemplate(*t3, *x3);
 }
 
+// TEST(TensorTestFixture, indexPermTensor2) {
+//     std::cout << std::endl << "Indexing and permutating tensor 1:" << std::endl;
+//     std::vector<size_t> v = {2, 3, 4};
+//     Range r1 = {0, 2, 1};
+//     Range r2 = {1, 3, 2};
+//     Range r3 = {0, 4, 2};
+//     std::vector q2 = {r1, r2, r3};
+//     Shape s1(v);
+//     auto t1 = Tensor::arange(s1, 0);
+//     auto t2 = t1->at(q2);
+//     Shape s2({2, 1, 2});
+//     auto t3 = t2->perm({2, 1, 0});
+//     Shape s3({1});
+//     auto t5 = Tensor::fromConst(s3, 1.0);
+//     auto t4 = t3->at(1)->at(0)->at(1)->broadcastTo(s3)->add(t5);
+//     // real d4[] = {18};
+//     // std::vector<size_t> indices;
+//     // Shape s4(indices);
+//     // auto x4 = Tensor::fromArr(s4, d4);
+//     // assertEqTemplate(*t4, *x4);
+//     std::cout << *t4 << std::endl;
+// }
+
 TEST(TensorTestFixture, indexSumTensor1) {
     std::cout << std::endl << "Indexing and summing tensor 1:" << std::endl;
     std::vector<size_t> v = {2, 3, 4};
     Range r1 = {0, 2, 1};
     Range r2 = {1, 3, 2};
     Range r3 = {0, 4, 2};
-    std::vector<Range> q2 = {r1, r2, r3};
+    std::vector q2 = {r1, r2, r3};
     Shape s1(v);
     auto t1 = Tensor::arange(s1, 0);
     std::cout << "Original:" << std::endl << *t1 << std::endl;
@@ -206,7 +229,7 @@ TEST(TensorTestFixture, softmaxTensor3) {
     Range r1 = {0, 2, 1};
     Range r2 = {1, 3, 2};
     Range r3 = {0, 4, 2};
-    std::vector<Range> q1 = {r1, r2, r3};
+    std::vector q1 = {r1, r2, r3};
     Shape s1(v);
     auto t1 = Tensor::arange(s1, 0);
     std::cout << "Original:" << std::endl << *t1 << std::endl;
@@ -220,7 +243,7 @@ TEST(TensorTestFixture, softmax4) {
     Range r1 = {0, 2, 1};
     Range r2 = {1, 3, 2};
     Range r3 = {0, 4, 2};
-    std::vector<Range> q1 = {r1, r2, r3};
+    std::vector q1 = {r1, r2, r3};
     Shape s1(v);
     auto t1 = Tensor::arange(s1, 0);
     std::cout << "Original:" << std::endl << *t1 << std::endl;
