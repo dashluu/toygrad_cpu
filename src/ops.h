@@ -14,7 +14,7 @@ namespace Toygrad::Tensor {
 
     enum class OpName {
         INDEX, CONST, ARANGE, FROM_ARR, RANDINT, RANDN,
-        ADD, SUB, MUL, DIV, POW, LOG, SIN, COS, EXP, RECIP, NEG, SQ, SQRT,
+        ADD, SUB, MUL, DIV, POW, LOG, SIN, COS, EXP, RECIP, NEG, SQ, SQRT, MATMUL,
         ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, ALIAS, PERM,
         EQ, NEQ, LESS, GREATER, LEQ, GEQ, MAX, MIN,
         RELU, SUM, SIGMOID, SOFTMAX,
@@ -372,19 +372,19 @@ namespace Toygrad::Tensor {
         void backward() override;
     };
 
-    struct SoftmaxOp final : UnOp {
-        int dim;
-
-        SoftmaxOp(const TensorPtr &operand, Tensor *tensor, int dim): UnOp(OpName::SOFTMAX, operand, tensor), dim(dim) {
-        }
-
-        void forward() override;
-    };
-
     struct CopyOp final : UnOp {
         CopyOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::COPY, operand, tensor) {
         }
 
         void forward() override;
+    };
+
+    struct MatmulOp final : BinOp {
+        MatmulOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): BinOp(OpName::MATMUL, lhs, rhs, tensor) {
+        }
+
+        void forward() override;
+
+        void backward() override;
     };
 }

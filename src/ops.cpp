@@ -820,97 +820,6 @@ namespace Toygrad::Tensor {
         }
     }
 
-    void SoftmaxOp::forward() {
-        IterPtr opIter = initIter(operand.get());
-        real max;
-        opIter->start();
-
-        if (opIter->hasNext()) {
-            max = opIter->curr();
-            opIter->save();
-            opIter->next();
-        } else {
-            return;
-        }
-
-        tensor->initVec();
-        IterPtr outIter = initIter(tensor);
-        real sum = 0.f;
-
-        if (dim == -1) {
-            while (opIter->hasNext()) {
-                if (max < opIter->curr())
-                    max = opIter->curr();
-                opIter->next();
-            };
-
-            for (opIter->start(); opIter->hasNext(); opIter->next()) {
-                sum += exp(opIter->curr() - max);
-            }
-
-            for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
-                outIter->curr() = exp(opIter->curr() - max) / sum;
-            }
-        } else {
-            outIter->start();
-            // 0 for max, 1 for sum, 2 for exp
-            short pass = 0;
-            size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
-
-            while (opIter->hasNext()) {
-                if (opIter->count() > lastDim && (opIter->count() - 1) % lastDim == 0) {
-                    if (pass == 0) {
-                        opIter->restore();
-                        sum = exp(opIter->curr() - max);
-                        opIter->save();
-                        pass = 1;
-                    } else if (pass == 1) {
-                        opIter->restore();
-                        outIter->curr() = exp(opIter->curr() - max) / sum;
-                        outIter->next();
-                        pass = 2;
-                    } else {
-                        max = opIter->curr();
-                        opIter->save();
-                        pass = 0;
-                    }
-                } else if (pass == 0) {
-                    if (max < opIter->curr())
-                        max = opIter->curr();
-                } else if (pass == 1) {
-                    sum += exp(opIter->curr() - max);
-                } else {
-                    outIter->curr() = exp(opIter->curr() - max) / sum;
-                    outIter->next();
-                }
-
-                opIter->next();
-            }
-
-            // No need to do max
-            opIter->restore();
-            sum = exp(opIter->curr() - max);
-            opIter->save();
-            opIter->next();
-
-            while (opIter->hasNext()) {
-                sum += exp(opIter->curr() - max);
-                opIter->next();
-            }
-
-            opIter->restore();
-            outIter->curr() = exp(opIter->curr() - max) / sum;
-            outIter->next();
-            opIter->next();
-
-            while (opIter->hasNext()) {
-                outIter->curr() = exp(opIter->curr() - max) / sum;
-                outIter->next();
-                opIter->next();
-            }
-        }
-    }
-
     void CopyOp::forward() {
         tensor->initVec();
         IterPtr outIter = initIter(tensor);
@@ -919,5 +828,54 @@ namespace Toygrad::Tensor {
         for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
             outIter->curr() = opIter->curr();
         }
+    }
+
+    void MatmulOp::forward() {
+        tensor->initVec();
+        IterPtr outIter = initIter(tensor);
+        IterPtr lhsIter = initIter(lhs.get());
+        IterPtr rhsIter = initIter(rhs.get());
+        size_t numDims = tensor->shape.getNumDims();
+        real sum;
+        outIter->start();
+        lhsIter->start();
+        rhsIter->start();
+        lhsIter->save();
+        rhsIter->save();
+
+        while (outIter->hasNext()) {
+            for (size_t i = 0; i < lhs->shape[numDims - 2]; i++) {
+                for (size_t j = 0; j < rhs->shape[numDims - 2]; j++) {
+                    sum = 0;
+
+                    for (size_t k = 0; k < rhs->shape[numDims - 1]; k++, lhsIter->next(), rhsIter->next()) {
+                        sum += lhsIter->curr() * rhsIter->curr();
+                    }
+
+                    outIter->curr() = sum;
+                    outIter->next();
+
+                    if (j < rhs->shape[numDims - 2] - 1) {
+                        lhsIter->restore();
+                    }
+
+                    lhsIter->save();
+                }
+
+                if (i < lhs->shape[numDims - 2] - 1) {
+                    rhsIter->restore();
+                }
+
+                rhsIter->save();
+            }
+        }
+    }
+
+    void MatmulOp::backward() {
+        lhs->initGrad();
+        rhs->initGrad();
+        // rhs already switches the last two dimensions so no need to do transpose here
+        lhs->grad = tensor->grad->matmul(rhs);
+        rhs->grad = lhs->T(lhs->shape.getNumDims() - 2)->matmul(tensor->grad);
     }
 }

@@ -11,7 +11,7 @@ namespace Toygrad::Tensor {
     const std::string AssertMessage::indexOutOfBounds = "Indexing element out of bounds";
     const std::string AssertMessage::shapesMismatched = "Shapes mismatched";
     const std::string AssertMessage::matmulOnLessThan2d =
-            "Matrix multiplication can only be applied on tensors with 2d or above";
+            "Matrix multiplication can only be applied on tensors with two dimensions or above";
     const std::string AssertMessage::invalidShapePerm = "Invalid shape permutation";
     const std::string AssertMessage::invalidDim = "Invalid dimension";
     const std::string AssertMessage::notBroadcastable = "Tensors are not broadcastable";

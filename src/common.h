@@ -59,6 +59,7 @@ namespace Toygrad::Tensor {
     struct SigmoidOp;
     struct SoftmaxOp;
     struct CopyOp;
+    struct MatmulOp;
 
     using TensorPtr = std::shared_ptr<Tensor>;
     using IterPtr = std::unique_ptr<TensorIter>;

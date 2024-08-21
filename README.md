@@ -60,15 +60,16 @@ cmake --build build
 - [ ] stack
 - [ ] cat
 - [x] softmax
-- [ ] matmul
+- [x] matmul: executes similarly to PyTorch where tensor multiplication is only applied in the last two dimensions
 
 ## Code
 
 ```
 // Arange operation
-std::vector<size_t> v = {2, 3, 4};
-Shape s1(v);
+std::vector<size_t> v1 = {2, 3, 4};
+Shape s1(v1);
 auto t1 = Tensor::arange(s1, 0); // 0 means starting at 0
+std::cout << *t1 << std::endl;
 
 Output:
 [[[0, 1, 2, 3], 
@@ -80,6 +81,7 @@ Output:
 
 // Summation by dimension
 auto t2 = t1->sum(1);
+std::cout << *t2 << std::endl;
 
 Output:
 [[12, 15, 18, 21], 
@@ -87,6 +89,7 @@ Output:
 
 // Shape permutation, in this case, same as transpose
 auto t3 = t1->perm({2, 1, 0});
+std::cout << *t3 << std::endl;
 
 Output:
 [[[0, 12], 
@@ -108,10 +111,33 @@ Range r2 = {1, 3, 2};
 Range r3 = {0, 4, 2};
 std::vector<Range> q2 = {r1, r2, r3};
 auto t4 = t1->at(q2);
+std::cout << *t4 << std::endl;
 
 Output:
 [[[4, 6]], 
 [[16, 18]]]
+
+// Tensor softmax
+auto t5 = t4->softmax(0);
+std::cout << *t5 << std::endl;
+
+Output:
+[[[6.14417e-06, 6.14417e-06]], 
+[[0.999994, 0.999994]]]
+
+// Matrix multiplication
+std::vector<size_t> v6 = {2, 3};
+Shape s6(v6);
+auto t6 = Tensor::arange(s6, 0);
+std::vector<size_t> v7 = {3, 4};
+Shape s7(v7);
+auto t7 = Tensor::arange(s7, 0);
+auto t8 = t6->matmul(t7);
+std::cout << *t8 << std::endl;
+
+Output:
+[[20, 23, 26, 29], 
+[56, 68, 80, 92]]
 ```
 
 ## Backpropagation

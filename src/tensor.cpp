@@ -608,7 +608,7 @@ namespace Toygrad::Tensor {
             }
 
             shapePerm.push_back(dim);
-            // Permutate operand
+            // Permutes operand
             Shape permShape = shape.perm(shapePerm);
             auto permTensor = perm(permShape);
             // std::cout << std::endl << "Perm:" << std::endl << *permTensor << std::endl;
@@ -631,6 +631,26 @@ namespace Toygrad::Tensor {
             outTensor = softmaxTensor->perm(shapePerm);
         }
 
+        return outTensor;
+    }
+
+    TensorPtr Tensor::matmul(const TensorPtr &rhs) {
+        assert(str_assert(shape.getNumDims() == rhs->shape.getNumDims(), AssertMessage::shapesMismatched));
+        assert(str_assert(shape.getNumDims() >= 2, AssertMessage::matmulOnLessThan2d));
+        assert(str_assert(std::equal(shape.begin(), shape.end() - 2,
+                rhs->shape.begin(), rhs->shape.end() - 2),
+            AssertMessage::shapesMismatched));
+        size_t numDims = shape.getNumDims();
+        assert(str_assert(shape[numDims - 1] == rhs->shape[numDims - 2], AssertMessage::shapesMismatched));
+        Shape outShape = shape;
+        // Shape of ...x H1 x W1 matmul ...x W1 x H2 == ...x H1 x H2
+        outShape[numDims - 1] = rhs->shape[numDims - 1];
+        // Permutes rhs's last two dimensions
+        auto tranposedRhs = rhs->T(numDims - 2);
+        // Do matrix multiplication on the last 2 dimensions
+        auto outTensor = std::make_shared<Tensor>(outShape);
+        outTensor->ops.push_back(new MatmulOp(shared_from_this(), tranposedRhs, outTensor.get()));
+        outTensor->ops.back()->forward();
         return outTensor;
     }
 
@@ -661,20 +681,15 @@ namespace Toygrad::Tensor {
             outTensor->ops.push_back(new SumOp(shared_from_this(), outTensor.get(), dim));
             outTensor->ops.back()->forward();
         } else {
-            Shape outShape;
-            outShape.offset = 0;
-            outShape.view = shape.view;
+            Shape outShape = shape;
+            // Remove the dimension in which the sum is computed in from the output shape
             outShape.view.erase(outShape.view.begin() + dim);
-            outShape.initStrides();
-            std::vector<size_t> shapePerm;
-
-            for (size_t i = 0; i < shape.getNumDims(); i++) {
-                if (i != dim) {
-                    shapePerm.push_back(i);
-                }
-            }
-
+            // Move the dimension in which the sum is computed in to the back of the input shape
+            std::vector<size_t> shapePerm(shape.getNumDims());
+            std::iota(shapePerm.begin(), shapePerm.end(), 0);
+            shapePerm.erase(shapePerm.begin() + dim);
             shapePerm.push_back(dim);
+            // Compute sum
             auto permTensor = perm(shapePerm);
             outTensor = std::make_shared<Tensor>(outShape);
             outTensor->ops.push_back(new SumOp(permTensor, outTensor.get(), dim));
@@ -693,20 +708,15 @@ namespace Toygrad::Tensor {
             outTensor->ops.push_back(new MaxOp(shared_from_this(), outTensor.get(), dim));
             outTensor->ops.back()->forward();
         } else {
-            Shape outShape;
-            outShape.offset = 0;
-            outShape.view = shape.view;
+            Shape outShape = shape;
+            // Remove the dimension in which the max is computed in from the output shape
             outShape.view.erase(outShape.view.begin() + dim);
-            outShape.initStrides();
-            std::vector<size_t> shapePerm;
-
-            for (size_t i = 0; i < shape.getNumDims(); i++) {
-                if (i != dim) {
-                    shapePerm.push_back(i);
-                }
-            }
-
+            // Move the dimension in which the max is computed in to the back of the input shape
+            std::vector<size_t> shapePerm(shape.getNumDims());
+            std::iota(shapePerm.begin(), shapePerm.end(), 0);
+            shapePerm.erase(shapePerm.begin() + dim);
             shapePerm.push_back(dim);
+            // Compute max
             auto permTensor = perm(shapePerm);
             outTensor = std::make_shared<Tensor>(outShape);
             outTensor->ops.push_back(new MaxOp(permTensor, outTensor.get(), dim));
@@ -725,20 +735,15 @@ namespace Toygrad::Tensor {
             outTensor->ops.push_back(new MinOp(shared_from_this(), outTensor.get(), dim));
             outTensor->ops.back()->forward();
         } else {
-            Shape outShape;
-            outShape.offset = 0;
-            outShape.view = shape.view;
+            Shape outShape = shape;
+            // Remove the dimension in which the min is computed in from the output shape
             outShape.view.erase(outShape.view.begin() + dim);
-            outShape.initStrides();
-            std::vector<size_t> shapePerm;
-
-            for (size_t i = 0; i < shape.getNumDims(); i++) {
-                if (i != dim) {
-                    shapePerm.push_back(i);
-                }
-            }
-
+            // Move the dimension in which the min is computed in to the back of the input shape
+            std::vector<size_t> shapePerm(shape.getNumDims());
+            std::iota(shapePerm.begin(), shapePerm.end(), 0);
+            shapePerm.erase(shapePerm.begin() + dim);
             shapePerm.push_back(dim);
+            // Compute min
             auto permTensor = perm(shapePerm);
             outTensor = std::make_shared<Tensor>(outShape);
             outTensor->ops.push_back(new MinOp(permTensor, outTensor.get(), dim));
@@ -775,13 +780,11 @@ namespace Toygrad::Tensor {
         return outTensor;
     }
 
-    TensorPtr Tensor::T() {
+    TensorPtr Tensor::T(size_t startDim) {
+        assert(str_assert(startDim < shape.getNumDims(), AssertMessage::invalidDim));
         std::vector<size_t> shapePerm(shape.getNumDims());
-
-        for (size_t i = 0; i < shape.getNumDims(); i++) {
-            shapePerm[i] = shape.getNumDims() - 1 - i;
-        }
-
+        std::iota(shapePerm.begin(), shapePerm.end(), 0);
+        std::reverse(shapePerm.begin() + startDim, shapePerm.end());
         return perm(shapePerm);
     }
 

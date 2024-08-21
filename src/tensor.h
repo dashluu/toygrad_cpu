@@ -56,6 +56,7 @@ namespace Toygrad::Tensor {
         friend struct SigmoidOp;
         friend struct SoftmaxOp;
         friend struct CopyOp;
+        friend struct MatmulOp;
 
         Tensor();
 
@@ -100,6 +101,10 @@ namespace Toygrad::Tensor {
 
         ~Tensor();
 
+        /**
+         * Gets the ID of the tensor.
+         * @return the tensor's ID.
+         */
         size_t getId() const {
             return id;
         }
@@ -130,20 +135,48 @@ namespace Toygrad::Tensor {
 
         /**
          * Checks if the tensor's memory is contiguous.
-         * @return true if the underlying memory is contiguous and false otherwise.
+         * @return true if the underlying memory is accessed contiguously and false otherwise.
          */
         bool isContiguous() const;
 
+        /**
+         * Checks if the tensor is broadcastable to a given shape.
+         * @param target the target shape to be broadcasted to.
+         * @return true if the tensor can be broadcasted and false otherwise.
+         */
         bool isBroadcastableTo(const Shape &target) const;
 
+        /**
+         * Broadcasts the tensor to a given shape.
+         * @param target the target shape to be broadcasted to.
+         * @return the result tensor.
+         */
         TensorPtr broadcastTo(const Shape &target);
 
+        /**
+         * Creates a shallow copy of the tensor using the same underlying memory.
+         * @return a shallow copy of the tensor.
+         */
         TensorPtr alias();
 
+        /**
+         * Creates a deep copy of the tensor using the same underlying memory.
+         * @return a deep copy of the tensor.
+         */
         TensorPtr copy();
 
+        /**
+         * Checks if the tensor is squeezable in a given dimension.
+         * @param dim the dimension to squeeze the tensor.
+         * @return true if the tensor is squeezable and false otherwise.
+         */
         bool isSqueezable(int dim = -1) const;
 
+        /**
+         * Squeezes the tensor in a given dimension.
+         * @param dim the dimension to squeeze the tensor.
+         * @return the result tensor.
+         */
         TensorPtr squeeze(int dim = -1);
 
         /**
@@ -154,20 +187,66 @@ namespace Toygrad::Tensor {
          */
         TensorPtr unsqueeze(int dim = -1);
 
+        /**
+         * Accesses tensor data at a given index.
+         * @param idx the index to access the tensor at.
+         * @return the result as a tensor.
+         */
         TensorPtr at(size_t idx);
 
+        /**
+         * Accesses tensor data at given indices.
+         * @param indices the indices to access the tensor at.
+         * @return the result as a tensor.
+         */
         TensorPtr at(const std::vector<size_t> &indices);
 
+        /**
+         * Accesses tensor data within given ranges.
+         * @param ranges the ranges for accessing the tensor.
+         * @return the result as a tensor.
+         */
         TensorPtr at(const std::vector<Range> &ranges);
 
+        /**
+         * Creates a new tensor containing increasing integers.
+         * @param shape the shape of the tensor.
+         * @param start the starting integer.
+         * @param step the step to increment each integer.
+         * @return the newly created tensor.
+         */
         static TensorPtr arange(const Shape &shape, real start, real step = 1.);
 
+        /**
+         * Creates a new tensor containing random integers in the range[min, max].
+         * @param shape the shape of the tensor.
+         * @param min the lower-bound integer.
+         * @param max the upper-bound integer.
+         * @return the newly created tensor.
+         */
         static TensorPtr randint(const Shape &shape, int min, int max);
 
+        /**
+         * Creates a new tensor containing random values using normal distribution.
+         * @param shape the shape of the tensor.
+         * @return the newly created tensor.
+         */
         static TensorPtr randn(const Shape &shape);
 
+        /**
+         * Creates a new tensor containing the same constant value.
+         * @param shape the shape of the tensor.
+         * @param c the constant value.
+         * @return the newly created tensor.
+         */
         static TensorPtr fromConst(const Shape &shape, real c);
 
+        /**
+         * Constructs a tensor given a shape and an array.
+         * @param shape the tensor shape.
+         * @param data the array containing the tensor data.
+         * @return a new tensor with the given shape and data.
+         */
         static TensorPtr fromArr(const Shape &shape, const real *data);
 
         friend std::ostream &operator<<(std::ostream &stream, Tensor &tensor);
@@ -460,6 +539,18 @@ namespace Toygrad::Tensor {
          */
         TensorPtr softmax(int dim = -1);
 
+        /**
+         * Matrix multiplies two tensors in the last two dimensions.
+         * @param rhs the right tensor.
+         * @return the result tensor.
+         */
+        TensorPtr matmul(const TensorPtr &rhs);
+
+        /**
+         * Reshapes the tensor to a given shape.
+         * @param target the target shape to be reshaped to.
+         * @return the result tensor.
+         */
         TensorPtr reshape(const Shape &target);
 
         /**
@@ -491,10 +582,11 @@ namespace Toygrad::Tensor {
         TensorPtr perm(const std::vector<size_t> &shapePerm);
 
         /**
-         * Transpose the tensor.
+         * Transpose the tensor starting from the given dimension.
+         * @param startDim the dimension to start transposing.
          * @return the result tensor.
          */
-        TensorPtr T();
+        TensorPtr T(size_t startDim = 0);
 
         /**
          * Checks if the tensor is empty.

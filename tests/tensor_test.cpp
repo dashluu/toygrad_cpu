@@ -455,3 +455,45 @@ TEST(TensorTestFixture, unsqueeze1) {
     auto x4 = Tensor::fromArr(s4, d4);
     assertEqTemplate(*t4, *x4);
 }
+
+void matmulHelper(const std::vector<size_t> &v1, real start1, const std::vector<size_t> &v2, real start2,
+                  const real *d3) {
+    Shape s1(v1);
+    auto t1 = Tensor::arange(s1, start1);
+    std::cout << "Matrix 1:" << std::endl << *t1 << std::endl;
+
+    Shape s2(v2);
+    auto t2 = Tensor::arange(s2, start2);
+    std::cout << "Matrix 2:" << std::endl << *t2 << std::endl;
+
+    auto t3 = t1->matmul(t2);
+    std::vector<size_t> v3 = v1;
+    v3[v3.size() - 1] = v2[v2.size() - 1];
+    Shape s3(v3);
+    auto x3 = Tensor::fromArr(s3, d3);
+    assertEqTemplate(*t3, *x3);
+}
+
+TEST(TensorTestFixture, matmul1) {
+    std::cout << std::endl << "Matmul 1:" << std::endl;
+    real d1[] = {20, 23, 26, 29, 56, 68, 80, 92};
+    real d2[] = {301, 322, 343, 364, 697, 754, 811, 868, 1093, 1186, 1279, 1372};
+    real d3[] = {67.5};
+    matmulHelper({2, 3}, 0, {3, 4}, 0, d1);
+    matmulHelper({3, 6}, 1, {6, 4}, 1, d2);
+    matmulHelper({1, 1}, 9, {1, 1}, 7.5, d3);
+}
+
+TEST(TensorTestFixture, matmul2) {
+    std::cout << std::endl << "Matmul 2:" << std::endl;
+    real d1[] = {20, 23, 26, 29, 56, 68, 80, 92, 344, 365, 386, 407, 488, 518, 548, 578};
+    real d2[] = {
+        301, 322, 343, 364, 697, 754, 811, 868, 1093, 1186, 1279, 1372,
+        4585, 4714, 4843, 4972, 5845, 6010, 6175, 6340, 7105, 7306, 7507, 7708,
+        14053, 14290, 14527, 14764, 16177, 16450, 16723, 16996, 18301, 18610, 18919, 19228
+    };
+    real d3[] = {15, 20, 25, 18, 24, 30};
+    matmulHelper({2, 2, 3}, 0, {2, 3, 4}, 0, d1);
+    matmulHelper({3, 1, 3, 6}, 1, {3, 1, 6, 4}, 1, d2);
+    matmulHelper({1, 2, 1}, 5, {1, 1, 3}, 3, d3);
+}
