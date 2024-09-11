@@ -655,7 +655,7 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::reshape(const Shape &target) {
-        assert(str_assert(target.getSize() == this->shape.getSize(), AssertMessage::shapesMismatched));
+        assert(str_assert(target.getSize() == shape.getSize(), AssertMessage::shapesMismatched));
         TensorPtr outTensor;
 
         if (isContiguous()) {
