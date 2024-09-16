@@ -17,6 +17,8 @@ for performance. There are still bugs internally so this project is not intended
 * C++ 20
 * Googletest library(optional)
 * Git
+* PyBind11 2.13.5
+* Python 3.12(see Python versions supported by PyBind11)
 
 ## :rocket: Quick start
 
