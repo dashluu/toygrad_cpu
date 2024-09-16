@@ -44,4 +44,12 @@ namespace Toygrad::Tensor {
 
         return std::make_unique<SparseIter>(tensor);
     }
+
+    IterPtr initConstIter(const Tensor *tensor) {
+        if (tensor->isContiguous()) {
+            return std::make_unique<DenseIter>(tensor);
+        }
+
+        return std::make_unique<SparseIter>(tensor);
+    }
 }

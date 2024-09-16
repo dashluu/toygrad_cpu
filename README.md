@@ -5,64 +5,71 @@
 A simple and toy framework similar to PyTorch written in C++ 20. Currently, it only works on CPU and is not optimized
 for performance. There are still bugs internally so this project is not intended to be used in production.
 
-## Acknowledgements
+## :raised_hands: Acknowledgements
 
 * https://martinlwx.github.io/en/how-to-reprensent-a-tensor-or-ndarray/#fn:2
 * http://blog.ezyang.com/2019/05/pytorch-internals/
 * https://dlsyscourse.org/lectures/
 
-## Requirements
+## :white_check_mark: Requirements
 
 * CMake 3.28 or higher
 * C++ 20
 * Googletest library(optional)
 * Git
 
-## Quick start
+## :rocket: Quick start
 
-You can build using the following command in the project folder:
+* Insert path to `Python.h` and the include path of Pybind11 in CMAKE. It is best that they are from the same Python
+  environment and using the same interpreter.
+* Build using the following command in the project folder:
 
 ```
 cmake -S . -B build
 cmake --build build
 ```
 
-## Features
+## :rocket: Features
 
-- [x] tensor-to-tensor element-wise add, sub, mul, div
-- [x] tensor-to-constant add, sub, mul, div
-- [x] negation
-- [x] reciprocal
-- [x] exponent
-- [x] square
-- [x] square root
-- [x] log
-- [x] pow
-- [x] sin, cos
-- [x] tensor indexing
-- [x] randint
-- [x] randn
-- [x] arange
-- [ ] tensor with constant: currently non-optimal
-- [x] tensor from an array with the given shape
-- [x] ==, !=, <, >, <=, >=
-- [x] =, +=, -=, *=, /=
-- [x] shape permutation
-- [x] transpose
-- [x] max, min
-- [x] broadcasting
-- [ ] squeeze, unsqueeze
-- [x] sum
-- [x] relu
-- [x] sigmoid
-- [ ] reshape: currently shares memory when the tensor is contiguous but allocates new memory when the tensor is
+- :white_check_mark: element-wise add, sub, mul, div
+- :white_check_mark: negation
+- :white_check_mark: reciprocal
+- :white_check_mark: exponent
+- :white_check_mark: square
+- :white_check_mark: square root
+- :white_check_mark: log
+- :white_check_mark: pow
+- :white_check_mark: sin, cos
+- :white_check_mark: tensor indexing
+- :white_check_mark: randint
+- :white_check_mark: randn
+- :white_check_mark: arange
+- :white_check_mark: tensor with the same constant
+- :white_check_mark: tensor from an array or vector with the given shape
+- :white_check_mark: ==, !=, <, >, <=, >=
+- :white_check_mark: =, +=, -=, *=, /=
+- :white_check_mark: shape permutation
+- :white_check_mark: transpose
+- :white_check_mark: max, min
+- :white_check_mark: broadcasting
+- :white_check_mark: squeeze, unsqueeze
+- :white_check_mark: sum
+- :white_check_mark: relu
+- :white_check_mark: sigmoid
+- :x: reshape: currently shares memory when the tensor is contiguous but allocates new memory when the tensor is
   non-contiguous
-- [ ] stack
-- [ ] cat
-- [x] softmax
-- [x] matmul: executes similarly to PyTorch where tensor multiplication is only applied in the last two dimensions
+- :x: stack
+- :x: cat
+- :white_check_mark: softmax
+- :white_check_mark: matmul: executes similarly to PyTorch where tensor multiplication is only applied in the last two
+  dimensions
+- :white_check_mark: backprop
+- :white_check_mark: lazy execution: waits until the computational graph is forwarded to compute tensor values
+- :x: Python support: in progress
 
-## Code
+## :computer: Code
+
+### C++
 
 ```
 // Arange operation
@@ -140,7 +147,39 @@ Output:
 [56, 68, 80, 92]]
 ```
 
-## Backpropagation
+### Python
 
-Backpropagation can be done by calling `tensor.backward()`. This is done by iterating the computational graph in
-reversed topological order.
+```
+from toygrad_cpu import Tensor, Shape, TensorGraph
+
+t1 = Tensor.randn([2, 3, 4])
+t2 = Tensor.randn([2, 3, 4])
+t3 = t1 + t2
+graph = TensorGraph.from_tensor(t3)
+graph.forward()
+print(t1)
+print(t2)
+print(t3)
+
+Output:
+[[[-2.14481, -0.327103, 0.827069, -0.139807], 
+[0.428268, -0.0396302, 0.54151, -2.92291], 
+[-0.849546, 1.12644, -1.30544, 0.0385326]], 
+[[-0.517463, 0.4214, 0.213025, -0.475141], 
+[-0.739245, -0.784967, 0.159765, 0.600664], 
+[0.687566, -0.435637, 1.24142, -0.247375]]]
+
+[[[-2.72279, -0.745629, 1.01239, -1.05384], 
+[1.72556, -0.661698, 0.378033, 0.0188341], 
+[-0.486968, 0.298707, -0.205761, -0.185135]], 
+[[-1.25837, 1.42416, -0.448031, 1.50035], 
+[-0.312271, 1.99179, -2.39648, 1.66187], 
+[1.19221, 0.0519404, -0.44068, 0.512235]]]
+
+[[[-4.8676, -1.07273, 1.83946, -1.19365], 
+[2.15382, -0.701329, 0.919543, -2.90407], 
+[-1.33651, 1.42515, -1.5112, -0.146602]], 
+[[-1.77583, 1.84556, -0.235005, 1.02521], 
+[-1.05152, 1.20683, -2.23671, 2.26253], 
+[1.87978, -0.383697, 0.800736, 0.264861]]]
+```

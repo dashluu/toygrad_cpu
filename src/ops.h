@@ -52,7 +52,7 @@ namespace Toygrad::Tensor {
         TensorPtr rhs;
 
         BinOp(OpName opName, const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): Op(OpType::BIN_OP, opName,
-                tensor), lhs(lhs), rhs(rhs) {
+            tensor), lhs(lhs), rhs(rhs) {
             lhs->edges.push_back(tensor);
             rhs->edges.push_back(tensor);
         }
@@ -88,10 +88,11 @@ namespace Toygrad::Tensor {
     };
 
     struct RandintOp final : Op {
-        int min;
-        int max;
+        int64_t min;
+        int64_t max;
 
-        RandintOp(Tensor *tensor, int min, int max) : Op(OpType::LEAF, OpName::RANDINT, tensor), min(min), max(max) {
+        RandintOp(Tensor *tensor, int64_t min, int64_t max) : Op(OpType::LEAF, OpName::RANDINT, tensor), min(min),
+                                                              max(max) {
         }
 
         void forward() override;
@@ -114,9 +115,9 @@ namespace Toygrad::Tensor {
     };
 
     struct SumOp final : UnOp {
-        int dim;
+        int64_t dim;
 
-        SumOp(const TensorPtr &operand, Tensor *tensor, int dim): UnOp(OpName::SUM, operand, tensor), dim(dim) {
+        SumOp(const TensorPtr &operand, Tensor *tensor, int64_t dim): UnOp(OpName::SUM, operand, tensor), dim(dim) {
         }
 
         void forward() override;
@@ -324,9 +325,9 @@ namespace Toygrad::Tensor {
     };
 
     struct MaxOp final : UnOp {
-        int dim;
+        int64_t dim;
 
-        MaxOp(const TensorPtr &operand, Tensor *tensor, int dim): UnOp(OpName::MAX, operand, tensor), dim(dim) {
+        MaxOp(const TensorPtr &operand, Tensor *tensor, int64_t dim): UnOp(OpName::MAX, operand, tensor), dim(dim) {
         }
 
         void forward() override;
@@ -335,9 +336,9 @@ namespace Toygrad::Tensor {
     };
 
     struct MinOp final : UnOp {
-        int dim;
+        int64_t dim;
 
-        MinOp(const TensorPtr &operand, Tensor *tensor, int dim): UnOp(OpName::MIN, operand, tensor), dim(dim) {
+        MinOp(const TensorPtr &operand, Tensor *tensor, int64_t dim): UnOp(OpName::MIN, operand, tensor), dim(dim) {
         }
 
         void forward() override;

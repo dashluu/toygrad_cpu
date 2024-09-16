@@ -2,19 +2,18 @@
 
 #include "shape.h"
 #include "vec.h"
-#include "str_assert.h"
 
 namespace Toygrad::Tensor {
     class Tensor final : public std::enable_shared_from_this<Tensor> {
         Shape shape;
         std::shared_ptr<Vec> vec;
         static size_t idCounter;
-        size_t id;
+        size_t id{};
         std::vector<Op *> ops = std::vector<Op *>();
         TensorPtr grad;
         std::vector<Tensor *> edges = std::vector<Tensor *>();
 
-        friend class CGraph;
+        friend class TensorGraph;
         friend struct Op;
         friend struct UnOp;
         friend struct BinOp;
@@ -60,35 +59,38 @@ namespace Toygrad::Tensor {
 
         Tensor();
 
+        explicit Tensor(const std::vector<size_t> &view, bool initStrides = true): Tensor(Shape(view), initStrides) {
+        }
+
+        TensorPtr getThis() { return shared_from_this(); }
+
+        static TensorPtr initTensor(const Shape &shape, bool initStrides = true) {
+            return std::make_shared<Tensor>(shape, initStrides);
+        }
+
         TensorPtr index(const std::vector<size_t> &indices);
 
         TensorPtr index(const std::vector<Range> &ranges);
 
-        void initVec() {
-            vec = std::make_shared<Vec>(shape.getSize());
-        }
+        void initVec() { vec = std::make_shared<Vec>(shape.getSize()); }
 
-        void initVec(real c) {
-            vec = std::make_shared<Vec>(shape.getSize(), c);
-        }
+        void initVec(real c) { vec = std::make_shared<Vec>(shape.getSize(), c); }
 
         void initGrad() {
             if (grad == nullptr) {
-                grad = std::make_shared<Tensor>(shape);
+                grad = initTensor(shape);
                 grad->initVec();
             }
         }
 
         void initGrad(real c) {
             if (grad == nullptr) {
-                grad = std::make_shared<Tensor>(shape);
+                grad = initTensor(shape);
                 grad->initVec(c);
             }
         }
 
-        bool isDimValid(int dim) const {
-            return dim >= -1 && dim < static_cast<int>(shape.getNumDims());
-        }
+        bool isDimValid(int64_t dim) const { return dim >= -1 && dim < static_cast<int>(shape.getNumDims()); }
 
         TensorPtr perm(const Shape &target);
 
@@ -105,33 +107,25 @@ namespace Toygrad::Tensor {
          * Gets the ID of the tensor.
          * @return the tensor's ID.
          */
-        size_t getId() const {
-            return id;
-        }
+        size_t getId() const { return id; }
 
         /**
          * Gets the shape of the tensor.
          * @return the shape of the current tensor.
          */
-        const Shape &getShape() const {
-            return shape;
-        }
+        const Shape &getShape() const { return shape; }
 
         /**
          * Gets the gradient of the current tensor.
          * @return the gradient tensor of the current tensor.
          */
-        TensorPtr getGrad() const {
-            return grad;
-        }
+        TensorPtr getGrad() const { return grad; }
 
         /**
          * Gets a pointer to the underlying memory.
          * @return a pointer to the underlying memory.
          */
-        std::shared_ptr<Vec> getVec() const {
-            return vec;
-        }
+        std::shared_ptr<Vec> getVec() const { return vec; }
 
         /**
          * Checks if the tensor's memory is contiguous.
@@ -147,11 +141,29 @@ namespace Toygrad::Tensor {
         bool isBroadcastableTo(const Shape &target) const;
 
         /**
+         * Checks if the tensor is broadcastable to a given shape.
+         * @param view the view of the target shape to be broadcasted to.
+         * @return true if the tensor can be broadcasted and false otherwise.
+         */
+        bool isBroadcastableTo(const std::vector<size_t> &view) const {
+            return isBroadcastableTo(Shape(view));
+        }
+
+        /**
          * Broadcasts the tensor to a given shape.
          * @param target the target shape to be broadcasted to.
          * @return the result tensor.
          */
         TensorPtr broadcastTo(const Shape &target);
+
+        /**
+         * Broadcasts the tensor to a given shape.
+         * @param view the view of the target shape to be broadcasted to.
+         * @return the result tensor.
+         */
+        TensorPtr broadcastTo(const std::vector<size_t> &view) {
+            return broadcastTo(Shape(view));
+        }
 
         /**
          * Creates a shallow copy of the tensor using the same underlying memory.
@@ -170,14 +182,14 @@ namespace Toygrad::Tensor {
          * @param dim the dimension to squeeze the tensor.
          * @return true if the tensor is squeezable and false otherwise.
          */
-        bool isSqueezable(int dim = -1) const;
+        bool isSqueezable(int64_t dim = -1) const;
 
         /**
          * Squeezes the tensor in a given dimension.
          * @param dim the dimension to squeeze the tensor.
          * @return the result tensor.
          */
-        TensorPtr squeeze(int dim = -1);
+        TensorPtr squeeze(int64_t dim = -1);
 
         /**
          * Inserts(before) a dimension of size one at a position.
@@ -185,7 +197,7 @@ namespace Toygrad::Tensor {
          * dimension at the end.
          * @return a new tensor with a dimension of size one inserted at the specified position.
          */
-        TensorPtr unsqueeze(int dim = -1);
+        TensorPtr unsqueeze(int64_t dim = -1);
 
         /**
          * Accesses tensor data at a given index.
@@ -218,13 +230,35 @@ namespace Toygrad::Tensor {
         static TensorPtr arange(const Shape &shape, real start, real step = 1.);
 
         /**
+         * Creates a new tensor containing increasing integers.
+         * @param view the view of the shape of the tensor.
+         * @param start the starting integer.
+         * @param step the step to increment each integer.
+         * @return the newly created tensor.
+         */
+        static TensorPtr arange(const std::vector<size_t> &view, real start, real step = 1.) {
+            return arange(Shape(view), start, step);
+        }
+
+        /**
          * Creates a new tensor containing random integers in the range[min, max].
          * @param shape the shape of the tensor.
          * @param min the lower-bound integer.
          * @param max the upper-bound integer.
          * @return the newly created tensor.
          */
-        static TensorPtr randint(const Shape &shape, int min, int max);
+        static TensorPtr randint(const Shape &shape, int64_t min, int64_t max);
+
+        /**
+         * Creates a new tensor containing random integers in the range[min, max].
+         * @param view the view of the shape of the tensor.
+         * @param min the lower-bound integer.
+         * @param max the upper-bound integer.
+         * @return the newly created tensor.
+         */
+        static TensorPtr randint(const std::vector<size_t> &view, int64_t min, int64_t max) {
+            return randint(Shape(view), min, max);
+        }
 
         /**
          * Creates a new tensor containing random values using normal distribution.
@@ -232,6 +266,15 @@ namespace Toygrad::Tensor {
          * @return the newly created tensor.
          */
         static TensorPtr randn(const Shape &shape);
+
+        /**
+         * Creates a new tensor containing random values using normal distribution.
+         * @param view the view of the shape of the tensor.
+         * @return the newly created tensor.
+         */
+        static TensorPtr randn(const std::vector<size_t> &view) {
+            return randn(Shape(view));
+        }
 
         /**
          * Creates a new tensor containing the same constant value.
@@ -242,6 +285,16 @@ namespace Toygrad::Tensor {
         static TensorPtr fromConst(const Shape &shape, real c);
 
         /**
+         * Creates a new tensor containing the same constant value.
+         * @param view the view of the shape of the tensor.
+         * @param c the constant value.
+         * @return the newly created tensor.
+         */
+        static TensorPtr fromConst(const std::vector<size_t> &view, real c) {
+            return fromConst(Shape(view), c);
+        }
+
+        /**
          * Constructs a tensor given a shape and an array.
          * @param shape the tensor shape.
          * @param data the array containing the tensor data.
@@ -249,7 +302,37 @@ namespace Toygrad::Tensor {
          */
         static TensorPtr fromArr(const Shape &shape, const real *data);
 
-        friend std::ostream &operator<<(std::ostream &stream, Tensor &tensor);
+        /**
+         * Constructs a tensor given a shape and an array.
+         * @param view the view of the tensor shape.
+         * @param data the array containing the tensor data.
+         * @return a new tensor with the given shape and data.
+         */
+        static TensorPtr fromArr(const std::vector<size_t> &view, const real *data) {
+            return fromArr(Shape(view), data);
+        }
+
+        /**
+         * Constructs a tensor given a shape and a vector.
+         * @param shape the tensor shape.
+         * @param data the vector containing the tensor data.
+         * @return a new tensor with the given shape and data.
+         */
+        static TensorPtr fromVec(const Shape &shape, const std::vector<real> &data) {
+            return fromArr(shape, data.data());
+        }
+
+        /**
+         * Constructs a tensor given a shape and a vector.
+         * @param view the view of the tensor shape.
+         * @param data the vector containing the tensor data.
+         * @return a new tensor with the given shape and data.
+         */
+        static TensorPtr fromVec(const std::vector<size_t> &view, const std::vector<real> &data) {
+            return fromVec(Shape(view), data);
+        }
+
+        friend std::ostream &operator<<(std::ostream &stream, const Tensor &tensor);
 
         TensorPtr operator[](size_t idx);
 
@@ -258,7 +341,14 @@ namespace Toygrad::Tensor {
          * @param rhs the right tensor.
          * @return the result tensor.
          */
-        TensorPtr add(const TensorPtr &rhs);
+        TensorPtr add(const TensorPtr &rhs) { return add(*rhs); }
+
+        /**
+         * Adds two tensors element-wise.
+         * @param rhs the right tensor.
+         * @return the result tensor.
+         */
+        TensorPtr add(Tensor &rhs);
 
         /**
          * Adds a constant to each element in the tensor.
@@ -272,7 +362,14 @@ namespace Toygrad::Tensor {
          * @param rhs the right tensor.
          * @return the result tensor.
          */
-        TensorPtr sub(const TensorPtr &rhs);
+        TensorPtr sub(const TensorPtr &rhs) { return sub(*rhs); }
+
+        /**
+         * Subtracts two tensors element-wise.
+         * @param rhs the right tensor.
+         * @return the result tensor.
+         */
+        TensorPtr sub(Tensor &rhs);
 
         /**
          * Subtracts a constant from each element in the tensor.
@@ -286,7 +383,14 @@ namespace Toygrad::Tensor {
          * @param rhs the right tensor.
          * @return the result tensor.
          */
-        TensorPtr mul(const TensorPtr &rhs);
+        TensorPtr mul(const TensorPtr &rhs) { return mul(*rhs); }
+
+        /**
+         * Multiplies two tensors element-wise.
+         * @param rhs the right tensor.
+         * @return the result tensor.
+         */
+        TensorPtr mul(Tensor &rhs);
 
         /**
          * Multiplies each element by a constant in the tensor.
@@ -300,7 +404,14 @@ namespace Toygrad::Tensor {
          * @param rhs the right tensor.
          * @return the result tensor.
          */
-        TensorPtr div(const TensorPtr &rhs);
+        TensorPtr div(const TensorPtr &rhs) { return div(*rhs); }
+
+        /**
+         * Divides two tensors element-wise.
+         * @param rhs the right tensor.
+         * @return the result tensor.
+         */
+        TensorPtr div(Tensor &rhs);
 
         /**
          * Divides each element by a constant in the tensor.
@@ -369,7 +480,14 @@ namespace Toygrad::Tensor {
          * @param rhs the right tensor.
          * @return the result tensor.
          */
-        TensorPtr eq(const TensorPtr &rhs);
+        TensorPtr eq(const TensorPtr &rhs) { return eq(*rhs); }
+
+        /**
+         * Checks if two tensors are equal elementwise.
+         * @param rhs the right tensor.
+         * @return the result tensor.
+         */
+        TensorPtr eq(Tensor &rhs);
 
         /**
          * Checks if each element in the tensor is equal to a constant.
@@ -390,7 +508,14 @@ namespace Toygrad::Tensor {
          * @param rhs the right tensor.
          * @return the result tensor.
          */
-        TensorPtr neq(const TensorPtr &rhs);
+        TensorPtr neq(const TensorPtr &rhs) { return neq(*rhs); }
+
+        /**
+         * Checks if two tensors are not equal elementwise.
+         * @param rhs the right tensor.
+         * @return the result tensor.
+         */
+        TensorPtr neq(Tensor &rhs);
 
         /**
          * Checks if each element in the tensor is not equal to a constant.
@@ -411,7 +536,14 @@ namespace Toygrad::Tensor {
          * @param rhs the right tensor.
          * @return the result tensor.
          */
-        TensorPtr lt(const TensorPtr &rhs);
+        TensorPtr lt(const TensorPtr &rhs) { return lt(*rhs); }
+
+        /**
+         * Checks if the left tensor is less than the right tensor elementwise.
+         * @param rhs the right tensor.
+         * @return the result tensor.
+         */
+        TensorPtr lt(Tensor &rhs);
 
         /**
          * Checks if each element of the tensor is less than a constant.
@@ -425,7 +557,14 @@ namespace Toygrad::Tensor {
          * @param rhs the right tensor.
          * @return the result tensor.
          */
-        TensorPtr gt(const TensorPtr &rhs);
+        TensorPtr gt(const TensorPtr &rhs) { return gt(*rhs); }
+
+        /**
+         * Checks if the left tensor is greater than the right tensor elementwise.
+         * @param rhs the right tensor.
+         * @return the result tensor.
+         */
+        TensorPtr gt(Tensor &rhs);
 
         /**
          * Checks if each element of the tensor is greater than a constant.
@@ -439,7 +578,14 @@ namespace Toygrad::Tensor {
          * @param rhs the right tensor.
          * @return the result tensor.
          */
-        TensorPtr leq(const TensorPtr &rhs);
+        TensorPtr leq(const TensorPtr &rhs) { return leq(*rhs); }
+
+        /**
+         * Checks if the left tensor is less than or equal to the right tensor elementwise.
+         * @param rhs the right tensor.
+         * @return the result tensor.
+         */
+        TensorPtr leq(Tensor &rhs);
 
         /**
          * Checks if each element of the tensor is less than or equal to a constant.
@@ -453,7 +599,14 @@ namespace Toygrad::Tensor {
          * @param rhs the right tensor.
          * @return the result tensor.
          */
-        TensorPtr geq(const TensorPtr &rhs);
+        TensorPtr geq(const TensorPtr &rhs) { return geq(*rhs); }
+
+        /**
+         * Checks if the left tensor is greater than or equal to the right tensor elementwise.
+         * @param rhs the right tensor.
+         * @return the result tensor.
+         */
+        TensorPtr geq(Tensor &rhs);
 
         /**
          * Checks if each element of the tensor is greater than or equal to a constant.
@@ -469,7 +622,14 @@ namespace Toygrad::Tensor {
          * @param rhs the right tensor.
          * @return the result tensor, the same as the current tensor.
          */
-        TensorPtr addAssign(const TensorPtr &rhs);
+        TensorPtr addAssign(const TensorPtr &rhs) { return addAssign(*rhs); }
+
+        /**
+         * Increments each element in the current tensor by the corresponding element in the right tensor.
+         * @param rhs the right tensor.
+         * @return the result tensor, the same as the current tensor.
+         */
+        TensorPtr addAssign(Tensor &rhs);
 
         /**
          * Increments each element in the current tensor by a constant.
@@ -483,7 +643,14 @@ namespace Toygrad::Tensor {
          * @param rhs the right tensor.
          * @return the result tensor, the same as the current tensor.
          */
-        TensorPtr subAssign(const TensorPtr &rhs);
+        TensorPtr subAssign(const TensorPtr &rhs) { return subAssign(*rhs); }
+
+        /**
+         * Decrements each element in the current tensor by the corresponding element in the right tensor.
+         * @param rhs the right tensor.
+         * @return the result tensor, the same as the current tensor.
+         */
+        TensorPtr subAssign(Tensor &rhs);
 
         /**
          * Decrements each element in the current tensor by a constant.
@@ -497,7 +664,14 @@ namespace Toygrad::Tensor {
          * @param rhs the right tensor.
          * @return the result tensor, the same as the current tensor.
          */
-        TensorPtr mulAssign(const TensorPtr &rhs);
+        TensorPtr mulAssign(const TensorPtr &rhs) { return mulAssign(*rhs); }
+
+        /**
+         * Multiplies in-place each element in the current tensor by the corresponding element in the right tensor.
+         * @param rhs the right tensor.
+         * @return the result tensor, the same as the current tensor.
+         */
+        TensorPtr mulAssign(Tensor &rhs);
 
         /**
          * Multiplies in-place each element in the current tensor by a constant.
@@ -511,7 +685,14 @@ namespace Toygrad::Tensor {
          * @param rhs the right tensor.
          * @return the result tensor, the same as the current tensor.
          */
-        TensorPtr divAssign(const TensorPtr &rhs);
+        TensorPtr divAssign(const TensorPtr &rhs) { return divAssign(*rhs); }
+
+        /**
+         * Divides in-place each element in the current tensor by the corresponding element in the right tensor.
+         * @param rhs the right tensor.
+         * @return the result tensor, the same as the current tensor.
+         */
+        TensorPtr divAssign(Tensor &rhs);
 
         /**
          * Divides in-place each element in the current tensor by a constant.
@@ -537,14 +718,21 @@ namespace Toygrad::Tensor {
          * @param dim the dimension to be computed in.
          * @return the result tensor.
          */
-        TensorPtr softmax(int dim = -1);
+        TensorPtr softmax(int64_t dim = -1);
 
         /**
          * Matrix multiplies two tensors in the last two dimensions.
          * @param rhs the right tensor.
          * @return the result tensor.
          */
-        TensorPtr matmul(const TensorPtr &rhs);
+        TensorPtr matmul(const TensorPtr &rhs) { return matmul(*rhs); }
+
+        /**
+         * Matrix multiplies two tensors in the last two dimensions.
+         * @param rhs the right tensor.
+         * @return the result tensor.
+         */
+        TensorPtr matmul(Tensor &rhs);
 
         /**
          * Reshapes the tensor to a given shape.
@@ -554,25 +742,34 @@ namespace Toygrad::Tensor {
         TensorPtr reshape(const Shape &target);
 
         /**
+         * Reshapes the tensor to a given shape.
+         * @param view the view of the target shape to be reshaped to.
+         * @return the result tensor.
+         */
+        TensorPtr reshape(const std::vector<size_t> &view) {
+            return reshape(Shape(view));
+        }
+
+        /**
          * Computes the summation in a given tensor dimension.
          * @param dim the dimension to be computed in.
          * @return the result tensor.
          */
-        TensorPtr sum(int dim = -1);
+        TensorPtr sum(int64_t dim = -1);
 
         /**
          * Computes the maximum in a given tensor dimension.
          * @param dim the dimension to be computed in.
          * @return the result tensor.
          */
-        TensorPtr max(int dim = -1);
+        TensorPtr max(int64_t dim = -1);
 
         /**
          * Computes the minimum in a given tensor dimension.
          * @param dim the dimension to be computed in.
          * @return the result tensor.
          */
-        TensorPtr min(int dim = -1);
+        TensorPtr min(int64_t dim = -1);
 
         /**
          * Permutes the shape of the tensor.
@@ -592,11 +789,16 @@ namespace Toygrad::Tensor {
          * Checks if the tensor is empty.
          * @return true if the tensor is empty and false otherwise.
          */
-        bool isEmpty();
+        bool isEmpty() const;
 
         /**
-         * Backpropagates and initializes the tensor's gradient.
+         * Forward propagation.
          */
-        void backward();
+        void forward() const;
+
+        /**
+         * Backward propagation.
+         */
+        void backward() const;
     };
 }

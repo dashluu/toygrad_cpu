@@ -71,10 +71,10 @@ namespace Toygrad::Tensor {
         } else {
             opIter->start();
             outIter->start();
+            size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
 
             while (opIter->hasNext()) {
-                if (opIter->count() > operand->shape[operand->shape.getNumDims() - 1] &&
-                    (opIter->count() - 1) % operand->shape[operand->shape.getNumDims() - 1] == 0) {
+                if (opIter->count() > lastDim && (opIter->count() - 1) % lastDim == 0) {
                     outIter->curr() = sum;
                     outIter->next();
                     sum = opIter->curr();
@@ -601,16 +601,19 @@ namespace Toygrad::Tensor {
         IterPtr opIter = initIter(operand.get());
         opIter->start();
 
-        if (!opIter->hasNext())
+        if (!opIter->hasNext()) {
             return;
+        }
 
         real max = opIter->curr();
         opIter->next();
 
         if (dim == -1) {
             while (opIter->hasNext()) {
-                if (opIter->curr() > max)
+                if (opIter->curr() > max) {
                     max = opIter->curr();
+                }
+
                 opIter->next();
             }
 
@@ -619,10 +622,10 @@ namespace Toygrad::Tensor {
         } else {
             opIter->start();
             outIter->start();
+            size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
 
             while (opIter->hasNext()) {
-                if (opIter->count() > operand->shape[operand->shape.getNumDims() - 1] &&
-                    (opIter->count() - 1) % operand->shape[operand->shape.getNumDims() - 1] == 0) {
+                if (opIter->count() > lastDim && (opIter->count() - 1) % lastDim == 0) {
                     outIter->curr() = max;
                     outIter->next();
                     max = opIter->curr();
@@ -639,28 +642,33 @@ namespace Toygrad::Tensor {
 
     void MaxOp::backward() {
         operand->initGrad();
+        IterPtr outIter = initIter(tensor);
         IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr opIter = initIter(operand.get());
         IterPtr opGradIter = initIter(operand->grad.get());
 
         // z = max(x1,x2,...,xn)
         // dx += dz * [1. if xi == z else 0.]
 
         if (dim == -1) {
-            for (opGradIter->start(), outGradIter->start(); opGradIter->hasNext(); opGradIter->next()) {
-                opGradIter->curr() += outGradIter->curr();
+            for (opIter->start(), opGradIter->start(), outIter->start(), outGradIter->start();
+                 opGradIter->hasNext();
+                 opGradIter->next()) {
+                if (outIter->curr() == opIter->curr()) {
+                    opGradIter->curr() += outGradIter->curr();
+                }
             }
         } else {
-            IterPtr outIter = initIter(tensor);
-            IterPtr opIter = initIter(operand.get());
-            outIter->start();
-            outGradIter->start();
             opIter->start();
             opGradIter->start();
+            outIter->start();
+            outGradIter->start();
             size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
 
             while (opGradIter->hasNext()) {
-                if (outIter->curr() == opIter->curr())
+                if (outIter->curr() == opIter->curr()) {
                     opGradIter->curr() += outGradIter->curr();
+                }
 
                 if (opGradIter->count() > lastDim && (opGradIter->count() - 1) % lastDim == 0) {
                     outIter->next();
@@ -679,16 +687,19 @@ namespace Toygrad::Tensor {
         IterPtr opIter = initIter(operand.get());
         opIter->start();
 
-        if (!opIter->hasNext())
+        if (!opIter->hasNext()) {
             return;
+        }
 
         real min = opIter->curr();
         opIter->next();
 
         if (dim == -1) {
             while (opIter->hasNext()) {
-                if (opIter->curr() < min)
+                if (opIter->curr() < min) {
                     min = opIter->curr();
+                }
+
                 opIter->next();
             }
 
@@ -697,10 +708,10 @@ namespace Toygrad::Tensor {
         } else {
             opIter->start();
             outIter->start();
+            size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
 
             while (opIter->hasNext()) {
-                if (opIter->count() > operand->shape[operand->shape.getNumDims() - 1] &&
-                    (opIter->count() - 1) % operand->shape[operand->shape.getNumDims() - 1] == 0) {
+                if (opIter->count() > lastDim && (opIter->count() - 1) % lastDim == 0) {
                     outIter->curr() = min;
                     outIter->next();
                     min = opIter->curr();
@@ -717,28 +728,33 @@ namespace Toygrad::Tensor {
 
     void MinOp::backward() {
         operand->initGrad();
+        IterPtr outIter = initIter(tensor);
         IterPtr outGradIter = initIter(tensor->grad.get());
+        IterPtr opIter = initIter(operand.get());
         IterPtr opGradIter = initIter(operand->grad.get());
 
         // z = min(x1,x2,...,xn)
         // dx += dz * [1. if xi == z else 0.]
 
         if (dim == -1) {
-            for (opGradIter->start(), outGradIter->start(); opGradIter->hasNext(); opGradIter->next()) {
-                opGradIter->curr() += outGradIter->curr();
+            for (opIter->start(), opGradIter->start(), outIter->start(), outGradIter->start();
+                 opGradIter->hasNext();
+                 opGradIter->next()) {
+                if (outIter->curr() == opIter->curr()) {
+                    opGradIter->curr() += outGradIter->curr();
+                }
             }
         } else {
-            IterPtr outIter = initIter(tensor);
-            IterPtr opIter = initIter(operand.get());
-            outIter->start();
-            outGradIter->start();
             opIter->start();
             opGradIter->start();
+            outIter->start();
+            outGradIter->start();
             size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
 
             while (opGradIter->hasNext()) {
-                if (outIter->curr() == opIter->curr())
+                if (outIter->curr() == opIter->curr()) {
                     opGradIter->curr() += outGradIter->curr();
+                }
 
                 if (opGradIter->count() > lastDim && (opGradIter->count() - 1) % lastDim == 0) {
                     outIter->next();

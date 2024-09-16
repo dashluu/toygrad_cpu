@@ -1,9 +1,10 @@
 #include <iostream>
 
+#include <ranges>
 #include "tensor.h"
 #include "ops.h"
 #include "tensor_iter.h"
-#include "cgraph.h"
+#include "str_assert.h"
 
 namespace Toygrad::Tensor {
     size_t Tensor::idCounter = 0;
@@ -19,11 +20,10 @@ namespace Toygrad::Tensor {
     Tensor::~Tensor() {
         std::cout << "Destroyed tensor " << id << "..." << std::endl;
         for (const auto &op: ops) delete op;
-        ops.clear();
     }
 
-    std::ostream &operator<<(std::ostream &stream, Tensor &tensor) {
-        IterPtr iter = initIter(&tensor);
+    std::ostream &operator<<(std::ostream &stream, const Tensor &tensor) {
+        IterPtr iter = initConstIter(&tensor);
         std::vector<size_t> sizePerDim = tensor.shape.getSizePerDim();
         iter->start();
         bool flag = iter->hasNext();
@@ -139,7 +139,7 @@ namespace Toygrad::Tensor {
 
     TensorPtr Tensor::broadcastTo(const Shape &target) {
         if (shape == target) {
-            return shared_from_this();
+            return getThis();
         }
 
         assert(str_assert(isBroadcastableTo(target), AssertMessage::notBroadcastable));
@@ -166,9 +166,8 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::alias(const Shape &target) {
-        auto outTensor = std::make_shared<Tensor>(target, false);
-        outTensor->ops.push_back(new AliasOp(shared_from_this(), outTensor.get()));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(target, false);
+        outTensor->ops.push_back(new AliasOp(getThis(), outTensor.get()));
         return outTensor;
     }
 
@@ -177,13 +176,12 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::copy() {
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new CopyOp(shared_from_this(), outTensor.get()));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new CopyOp(getThis(), outTensor.get()));
         return outTensor;
     }
 
-    bool Tensor::isSqueezable(int dim) const {
+    bool Tensor::isSqueezable(int64_t dim) const {
         if (!isDimValid(dim)) {
             return false;
         }
@@ -203,7 +201,7 @@ namespace Toygrad::Tensor {
         return shape.getNumDims() > dimsToSqueeze;
     }
 
-    TensorPtr Tensor::squeeze(int dim) {
+    TensorPtr Tensor::squeeze(int64_t dim) {
         Shape outShape;
 
         if (dim != -1) {
@@ -230,7 +228,7 @@ namespace Toygrad::Tensor {
         return alias(outShape);
     }
 
-    TensorPtr Tensor::unsqueeze(int dim) {
+    TensorPtr Tensor::unsqueeze(int64_t dim) {
         assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
         Shape outShape = shape;
 
@@ -272,37 +270,32 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::arange(const Shape &shape, real start, real step) {
-        auto outTensor = std::make_shared<Tensor>(shape);
+        auto outTensor = initTensor(shape);
         outTensor->ops.push_back(new ArangeOp(outTensor.get(), start, step));
-        outTensor->ops.back()->forward();
         return outTensor;
     }
 
-    TensorPtr Tensor::randint(const Shape &shape, int min, int max) {
-        auto outTensor = std::make_shared<Tensor>(shape);
+    TensorPtr Tensor::randint(const Shape &shape, int64_t min, int64_t max) {
+        auto outTensor = initTensor(shape);
         outTensor->ops.push_back(new RandintOp(outTensor.get(), min, max));
-        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::randn(const Shape &shape) {
-        auto outTensor = std::make_shared<Tensor>(shape);
+        auto outTensor = initTensor(shape);
         outTensor->ops.push_back(new RandnOp(outTensor.get()));
-        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::fromConst(const Shape &shape, real c) {
-        auto outTensor = std::make_shared<Tensor>(shape);
+        auto outTensor = initTensor(shape);
         outTensor->ops.push_back(new ConstOp(outTensor.get(), c));
-        outTensor->ops.back()->forward();
         return outTensor;
     }
 
     TensorPtr Tensor::fromArr(const Shape &shape, const real *data) {
-        auto outTensor = std::make_shared<Tensor>(shape);
+        auto outTensor = initTensor(shape);
         outTensor->ops.push_back(new FromArrOp(outTensor.get(), data));
-        outTensor->ops.back()->forward();
         return outTensor;
     }
 
@@ -311,12 +304,11 @@ namespace Toygrad::Tensor {
         return outTensor;
     }
 
-    TensorPtr Tensor::add(const TensorPtr &rhs) {
-        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs->broadcastTo(shape);
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new AddOp(shared_from_this(), broadcastedRhs, outTensor.get()));
-        outTensor->ops.back()->forward();
+    TensorPtr Tensor::add(Tensor &rhs) {
+        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs.broadcastTo(shape);
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new AddOp(getThis(), broadcastedRhs, outTensor.get()));
         return outTensor;
     }
 
@@ -324,12 +316,11 @@ namespace Toygrad::Tensor {
         return add(fromConst(shape, c));
     }
 
-    TensorPtr Tensor::sub(const TensorPtr &rhs) {
-        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs->broadcastTo(shape);
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new SubOp(shared_from_this(), broadcastedRhs, outTensor.get()));
-        outTensor->ops.back()->forward();
+    TensorPtr Tensor::sub(Tensor &rhs) {
+        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs.broadcastTo(shape);
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new SubOp(getThis(), broadcastedRhs, outTensor.get()));
         return outTensor;
     }
 
@@ -337,12 +328,11 @@ namespace Toygrad::Tensor {
         return sub(fromConst(shape, c));
     }
 
-    TensorPtr Tensor::mul(const TensorPtr &rhs) {
-        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs->broadcastTo(shape);
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new MulOp(shared_from_this(), broadcastedRhs, outTensor.get()));
-        outTensor->ops.back()->forward();
+    TensorPtr Tensor::mul(Tensor &rhs) {
+        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs.broadcastTo(shape);
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new MulOp(getThis(), broadcastedRhs, outTensor.get()));
         return outTensor;
     }
 
@@ -350,12 +340,11 @@ namespace Toygrad::Tensor {
         return mul(fromConst(shape, c));
     }
 
-    TensorPtr Tensor::div(const TensorPtr &rhs) {
-        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs->broadcastTo(shape);
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new DivOp(shared_from_this(), broadcastedRhs, outTensor.get()));
-        outTensor->ops.back()->forward();
+    TensorPtr Tensor::div(Tensor &rhs) {
+        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs.broadcastTo(shape);
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new DivOp(getThis(), broadcastedRhs, outTensor.get()));
         return outTensor;
     }
 
@@ -364,74 +353,64 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::pow(real c) {
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new PowOp(shared_from_this(), outTensor.get(), c));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new PowOp(getThis(), outTensor.get(), c));
         return outTensor;
     }
 
     TensorPtr Tensor::log() {
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new LogOp(shared_from_this(), outTensor.get()));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new LogOp(getThis(), outTensor.get()));
         return outTensor;
     }
 
     TensorPtr Tensor::sin() {
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new SinOp(shared_from_this(), outTensor.get()));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new SinOp(getThis(), outTensor.get()));
         return outTensor;
     }
 
     TensorPtr Tensor::cos() {
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new CosOp(shared_from_this(), outTensor.get()));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new CosOp(getThis(), outTensor.get()));
         return outTensor;
     }
 
     TensorPtr Tensor::exp() {
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new ExpOp(shared_from_this(), outTensor.get()));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new ExpOp(getThis(), outTensor.get()));
         return outTensor;
     }
 
     TensorPtr Tensor::recip(real c) {
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new RecipOp(shared_from_this(), outTensor.get(), c));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new RecipOp(getThis(), outTensor.get(), c));
         return outTensor;
     }
 
     TensorPtr Tensor::sq() {
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new SqOp(shared_from_this(), outTensor.get()));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new SqOp(getThis(), outTensor.get()));
         return outTensor;
     }
 
     TensorPtr Tensor::sqrt() {
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new SqrtOp(shared_from_this(), outTensor.get()));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new SqrtOp(getThis(), outTensor.get()));
         return outTensor;
     }
 
     TensorPtr Tensor::neg() {
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new NegOp(shared_from_this(), outTensor.get()));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new NegOp(getThis(), outTensor.get()));
         return outTensor;
     }
 
-    TensorPtr Tensor::eq(const TensorPtr &rhs) {
-        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs->broadcastTo(shape);
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new EqOp(shared_from_this(), broadcastedRhs, outTensor.get()));
-        outTensor->ops.back()->forward();
+    TensorPtr Tensor::eq(Tensor &rhs) {
+        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs.broadcastTo(shape);
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new EqOp(getThis(), broadcastedRhs, outTensor.get()));
         return outTensor;
     }
 
@@ -445,11 +424,11 @@ namespace Toygrad::Tensor {
         }
 
         // TODO: convert this to initIter
-        SparseIter lhsIter(this);
-        SparseIter rhsIter(&rhs);
+        IterPtr lhsIter = initConstIter(this);
+        IterPtr rhsIter = initConstIter(&rhs);
 
-        for (lhsIter.start(), rhsIter.start(); lhsIter.hasNext(); lhsIter.next(), rhsIter.next()) {
-            if (lhsIter.curr() != rhsIter.curr()) {
+        for (lhsIter->start(), rhsIter->start(); lhsIter->hasNext(); lhsIter->next(), rhsIter->next()) {
+            if (lhsIter->curr() != rhsIter->curr()) {
                 return false;
             }
         }
@@ -457,12 +436,11 @@ namespace Toygrad::Tensor {
         return true;
     }
 
-    TensorPtr Tensor::neq(const TensorPtr &rhs) {
-        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs->broadcastTo(shape);
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new NeqOp(shared_from_this(), broadcastedRhs, outTensor.get()));
-        outTensor->ops.back()->forward();
+    TensorPtr Tensor::neq(Tensor &rhs) {
+        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs.broadcastTo(shape);
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new NeqOp(getThis(), broadcastedRhs, outTensor.get()));
         return outTensor;
     }
 
@@ -474,12 +452,11 @@ namespace Toygrad::Tensor {
         return !(*this == rhs);
     }
 
-    TensorPtr Tensor::lt(const TensorPtr &rhs) {
-        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs->broadcastTo(shape);
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new LessOp(shared_from_this(), broadcastedRhs, outTensor.get()));
-        outTensor->ops.back()->forward();
+    TensorPtr Tensor::lt(Tensor &rhs) {
+        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs.broadcastTo(shape);
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new LessOp(getThis(), broadcastedRhs, outTensor.get()));
         return outTensor;
     }
 
@@ -487,12 +464,11 @@ namespace Toygrad::Tensor {
         return lt(fromConst(shape, c));
     }
 
-    TensorPtr Tensor::gt(const TensorPtr &rhs) {
-        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs->broadcastTo(shape);
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new GreaterOp(shared_from_this(), broadcastedRhs, outTensor.get()));
-        outTensor->ops.back()->forward();
+    TensorPtr Tensor::gt(Tensor &rhs) {
+        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs.broadcastTo(shape);
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new GreaterOp(getThis(), broadcastedRhs, outTensor.get()));
         return outTensor;
     }
 
@@ -500,12 +476,11 @@ namespace Toygrad::Tensor {
         return gt(fromConst(shape, c));
     }
 
-    TensorPtr Tensor::leq(const TensorPtr &rhs) {
-        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs->broadcastTo(shape);
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new LeqOp(shared_from_this(), broadcastedRhs, outTensor.get()));
-        outTensor->ops.back()->forward();
+    TensorPtr Tensor::leq(Tensor &rhs) {
+        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs.broadcastTo(shape);
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new LeqOp(getThis(), broadcastedRhs, outTensor.get()));
         return outTensor;
     }
 
@@ -513,12 +488,11 @@ namespace Toygrad::Tensor {
         return leq(fromConst(shape, c));
     }
 
-    TensorPtr Tensor::geq(const TensorPtr &rhs) {
-        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs->broadcastTo(shape);
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new GeqOp(shared_from_this(), broadcastedRhs, outTensor.get()));
-        outTensor->ops.back()->forward();
+    TensorPtr Tensor::geq(Tensor &rhs) {
+        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs.broadcastTo(shape);
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new GeqOp(getThis(), broadcastedRhs, outTensor.get()));
         return outTensor;
     }
 
@@ -526,48 +500,44 @@ namespace Toygrad::Tensor {
         return geq(fromConst(shape, c));
     }
 
-    TensorPtr Tensor::addAssign(const TensorPtr &rhs) {
-        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs->broadcastTo(shape);
+    TensorPtr Tensor::addAssign(Tensor &rhs) {
+        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs.broadcastTo(shape);
         ops.push_back(new AddAssignOp(broadcastedRhs, this));
-        ops.back()->forward();
-        return shared_from_this();
+        return getThis();
     }
 
     TensorPtr Tensor::addAssign(real c) {
         return addAssign(fromConst(shape, c));
     }
 
-    TensorPtr Tensor::subAssign(const TensorPtr &rhs) {
-        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs->broadcastTo(shape);
+    TensorPtr Tensor::subAssign(Tensor &rhs) {
+        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs.broadcastTo(shape);
         ops.push_back(new SubAssignOp(broadcastedRhs, this));
-        ops.back()->forward();
-        return shared_from_this();
+        return getThis();
     }
 
     TensorPtr Tensor::subAssign(real c) {
         return subAssign(fromConst(shape, c));
     }
 
-    TensorPtr Tensor::mulAssign(const TensorPtr &rhs) {
-        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs->broadcastTo(shape);
+    TensorPtr Tensor::mulAssign(Tensor &rhs) {
+        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs.broadcastTo(shape);
         ops.push_back(new MulAssignOp(broadcastedRhs, this));
-        ops.back()->forward();
-        return shared_from_this();
+        return getThis();
     }
 
     TensorPtr Tensor::mulAssign(real c) {
         return mulAssign(fromConst(shape, c));
     }
 
-    TensorPtr Tensor::divAssign(const TensorPtr &rhs) {
-        assert(str_assert(rhs->isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs->broadcastTo(shape);
+    TensorPtr Tensor::divAssign(Tensor &rhs) {
+        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
+        auto broadcastedRhs = rhs.broadcastTo(shape);
         ops.push_back(new DivAssignOp(broadcastedRhs, this));
-        ops.back()->forward();
-        return shared_from_this();
+        return getThis();
     }
 
     TensorPtr Tensor::divAssign(real c) {
@@ -575,20 +545,18 @@ namespace Toygrad::Tensor {
     }
 
     TensorPtr Tensor::relu() {
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new ReluOp(shared_from_this(), outTensor.get()));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new ReluOp(getThis(), outTensor.get()));
         return outTensor;
     }
 
     TensorPtr Tensor::sigmoid() {
-        auto outTensor = std::make_shared<Tensor>(shape);
-        outTensor->ops.push_back(new SigmoidOp(shared_from_this(), outTensor.get()));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(shape);
+        outTensor->ops.push_back(new SigmoidOp(getThis(), outTensor.get()));
         return outTensor;
     }
 
-    TensorPtr Tensor::softmax(int dim) {
+    TensorPtr Tensor::softmax(int64_t dim) {
         assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
         TensorPtr outTensor;
 
@@ -599,14 +567,9 @@ namespace Toygrad::Tensor {
             auto sumTensor = expTensor->sum();
             outTensor = expTensor->div(sumTensor);
         } else {
-            std::vector<size_t> shapePerm;
-
-            for (size_t i = 0; i < shape.getNumDims(); i++) {
-                if (i != dim) {
-                    shapePerm.push_back(i);
-                }
-            }
-
+            std::vector<size_t> shapePerm(shape.getNumDims());
+            std::iota(shapePerm.begin(), shapePerm.end(), 0);
+            shapePerm.erase(shapePerm.begin() + dim);
             shapePerm.push_back(dim);
             // Permutes operand
             Shape permShape = shape.perm(shapePerm);
@@ -634,23 +597,22 @@ namespace Toygrad::Tensor {
         return outTensor;
     }
 
-    TensorPtr Tensor::matmul(const TensorPtr &rhs) {
-        assert(str_assert(shape.getNumDims() == rhs->shape.getNumDims(), AssertMessage::shapesMismatched));
+    TensorPtr Tensor::matmul(Tensor &rhs) {
+        assert(str_assert(shape.getNumDims() == rhs.shape.getNumDims(), AssertMessage::shapesMismatched));
         assert(str_assert(shape.getNumDims() >= 2, AssertMessage::matmulOnLessThan2d));
         assert(str_assert(std::equal(shape.begin(), shape.end() - 2,
-                rhs->shape.begin(), rhs->shape.end() - 2),
+                rhs.shape.begin(), rhs.shape.end() - 2),
             AssertMessage::shapesMismatched));
         size_t numDims = shape.getNumDims();
-        assert(str_assert(shape[numDims - 1] == rhs->shape[numDims - 2], AssertMessage::shapesMismatched));
+        assert(str_assert(shape[numDims - 1] == rhs.shape[numDims - 2], AssertMessage::shapesMismatched));
         Shape outShape = shape;
         // Shape of ...x H1 x W1 matmul ...x W1 x H2 == ...x H1 x H2
-        outShape[numDims - 1] = rhs->shape[numDims - 1];
+        outShape[numDims - 1] = rhs.shape[numDims - 1];
         // Permutes rhs's last two dimensions
-        auto tranposedRhs = rhs->T(numDims - 2);
+        auto tranposedRhs = rhs.T(numDims - 2);
         // Do matrix multiplication on the last 2 dimensions
-        auto outTensor = std::make_shared<Tensor>(outShape);
-        outTensor->ops.push_back(new MatmulOp(shared_from_this(), tranposedRhs, outTensor.get()));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(outShape);
+        outTensor->ops.push_back(new MatmulOp(getThis(), tranposedRhs, outTensor.get()));
         return outTensor;
     }
 
@@ -659,27 +621,24 @@ namespace Toygrad::Tensor {
         TensorPtr outTensor;
 
         if (isContiguous()) {
-            outTensor = std::make_shared<Tensor>(target, false);
+            outTensor = initTensor(target, false);
             outTensor->shape.offset = shape.offset;
-            outTensor->ops.push_back(new AliasOp(shared_from_this(), outTensor.get()));
-            outTensor->ops.back()->forward();
+            outTensor->ops.push_back(new AliasOp(getThis(), outTensor.get()));
         } else {
-            outTensor = std::make_shared<Tensor>(target);
-            outTensor->ops.push_back(new CopyOp(shared_from_this(), outTensor.get()));
-            outTensor->ops.back()->forward();
+            outTensor = initTensor(target);
+            outTensor->ops.push_back(new CopyOp(getThis(), outTensor.get()));
         }
 
         return outTensor;
     }
 
-    TensorPtr Tensor::sum(int dim) {
+    TensorPtr Tensor::sum(int64_t dim) {
         assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
         TensorPtr outTensor;
 
         if (dim == -1) {
-            outTensor = std::make_shared<Tensor>(Shape({1}));
-            outTensor->ops.push_back(new SumOp(shared_from_this(), outTensor.get(), dim));
-            outTensor->ops.back()->forward();
+            outTensor = initTensor(Shape({1}));
+            outTensor->ops.push_back(new SumOp(getThis(), outTensor.get(), dim));
         } else {
             Shape outShape = shape;
             // Remove the dimension in which the sum is computed in from the output shape
@@ -691,22 +650,20 @@ namespace Toygrad::Tensor {
             shapePerm.push_back(dim);
             // Compute sum
             auto permTensor = perm(shapePerm);
-            outTensor = std::make_shared<Tensor>(outShape);
+            outTensor = initTensor(outShape);
             outTensor->ops.push_back(new SumOp(permTensor, outTensor.get(), dim));
-            outTensor->ops.back()->forward();
         }
 
         return outTensor;
     }
 
-    TensorPtr Tensor::max(int dim) {
+    TensorPtr Tensor::max(int64_t dim) {
         assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
         TensorPtr outTensor;
 
         if (dim == -1) {
-            outTensor = std::make_shared<Tensor>(Shape({1}));
-            outTensor->ops.push_back(new MaxOp(shared_from_this(), outTensor.get(), dim));
-            outTensor->ops.back()->forward();
+            outTensor = initTensor(Shape({1}));
+            outTensor->ops.push_back(new MaxOp(getThis(), outTensor.get(), dim));
         } else {
             Shape outShape = shape;
             // Remove the dimension in which the max is computed in from the output shape
@@ -718,22 +675,20 @@ namespace Toygrad::Tensor {
             shapePerm.push_back(dim);
             // Compute max
             auto permTensor = perm(shapePerm);
-            outTensor = std::make_shared<Tensor>(outShape);
+            outTensor = initTensor(outShape);
             outTensor->ops.push_back(new MaxOp(permTensor, outTensor.get(), dim));
-            outTensor->ops.back()->forward();
         }
 
         return outTensor;
     }
 
-    TensorPtr Tensor::min(int dim) {
+    TensorPtr Tensor::min(int64_t dim) {
         assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
         TensorPtr outTensor;
 
         if (dim == -1) {
-            outTensor = std::make_shared<Tensor>(Shape({1}));
-            outTensor->ops.push_back(new MinOp(shared_from_this(), outTensor.get(), dim));
-            outTensor->ops.back()->forward();
+            outTensor = initTensor(Shape({1}));
+            outTensor->ops.push_back(new MinOp(getThis(), outTensor.get(), dim));
         } else {
             Shape outShape = shape;
             // Remove the dimension in which the min is computed in from the output shape
@@ -745,9 +700,8 @@ namespace Toygrad::Tensor {
             shapePerm.push_back(dim);
             // Compute min
             auto permTensor = perm(shapePerm);
-            outTensor = std::make_shared<Tensor>(outShape);
+            outTensor = initTensor(outShape);
             outTensor->ops.push_back(new MinOp(permTensor, outTensor.get(), dim));
-            outTensor->ops.back()->forward();
         }
 
         return outTensor;
@@ -767,16 +721,14 @@ namespace Toygrad::Tensor {
         }
 
         Shape permShape = shape.perm(shapePerm);
-        auto outTensor = std::make_shared<Tensor>(permShape, false);
-        outTensor->ops.push_back(new PermOp(shared_from_this(), outTensor.get()));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(permShape, false);
+        outTensor->ops.push_back(new PermOp(getThis(), outTensor.get()));
         return outTensor;
     }
 
     TensorPtr Tensor::perm(const Shape &target) {
-        auto outTensor = std::make_shared<Tensor>(target, false);
-        outTensor->ops.push_back(new PermOp(shared_from_this(), outTensor.get()));
-        outTensor->ops.back()->forward();
+        auto outTensor = initTensor(target, false);
+        outTensor->ops.push_back(new PermOp(getThis(), outTensor.get()));
         return outTensor;
     }
 
@@ -788,15 +740,21 @@ namespace Toygrad::Tensor {
         return perm(shapePerm);
     }
 
-    bool Tensor::isEmpty() {
-        IterPtr iter = initIter(this);
+    bool Tensor::isEmpty() const {
+        IterPtr iter = initConstIter(this);
         iter->start();
         return !iter->hasNext();
     }
 
-    void Tensor::backward() {
-        assert(str_assert(shape.getSize() == 1, AssertMessage::gradOnScalarOnly));
-        static CGraph graph;
-        graph.backprop(shared_from_this());
+    void Tensor::forward() const {
+        for (auto &op: ops) {
+            op->forward();
+        }
+    }
+
+    void Tensor::backward() const {
+        for (auto &op: std::ranges::reverse_view(ops)) {
+            op->backward();
+        }
     }
 }

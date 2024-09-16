@@ -131,4 +131,6 @@ namespace Toygrad::Tensor {
     };
 
     IterPtr initIter(Tensor *tensor);
+
+    IterPtr initConstIter(const Tensor *tensor);
 }

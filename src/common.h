@@ -15,8 +15,9 @@ namespace Toygrad::Tensor {
         size_t step;
     };
 
-    class CGraph;
+    class TensorGraph;
     class TensorIter;
+    class ConstTensorIter;
     class Tensor;
     struct Op;
     struct UnOp;
@@ -62,7 +63,10 @@ namespace Toygrad::Tensor {
     struct MatmulOp;
 
     using TensorPtr = std::shared_ptr<Tensor>;
+    using ConstTensorPtr = std::shared_ptr<const Tensor>;
     using IterPtr = std::unique_ptr<TensorIter>;
+    using ConstIterPtr = std::unique_ptr<ConstTensorIter>;
+    using GraphPtr = std::unique_ptr<TensorGraph>;
     const auto sqrt = std::sqrtf;
     const auto exp = std::expf;
     const auto pow = std::powf;
