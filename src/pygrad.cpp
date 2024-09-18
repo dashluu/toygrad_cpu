@@ -42,7 +42,7 @@ void init_shape_module(py::module_ &m) {
 void init_graph_module(py::module_ &m) {
     py::class_<TensorGraph>(m, "TensorGraph")
             .def_static("from_tensor", [](Tensor &tensor) {
-                return TensorGraph::fromTensor(&tensor);
+                return std::make_unique<TensorGraph>(&tensor);
             })
             .def("forward", [](const TensorGraph &self) {
                 return self.forward();
@@ -70,14 +70,53 @@ void init_tensor_module(py::module_ &m) {
             .def("broadcast_to", [](Tensor &self, const std::vector<size_t> &view) {
                 return self.broadcastTo(view);
             })
-            .def("is_squeezable", [](const Tensor &self, int64_t dim = -1) {
-                return self.isSqueezable(dim);
+            .def("is_squeezable", [](const Tensor &self, int64_t dim) {
+                int64_t numDims = self.getShape().getNumDims();
+
+                if (dim <= -numDims || dim >= numDims) {
+                    throw py::index_error();
+                }
+
+                if (dim >= 0) {
+                    return self.isSqueezable(dim);
+                }
+
+                return self.isSqueezable(numDims + dim);
             })
-            .def("squeeze", [](Tensor &self, int64_t dim = -1) {
-                return self.squeeze(dim);
+            .def("is_squeezable", [](const Tensor &self) {
+                return self.isSqueezable(-1);
             })
-            .def("unsqueeze", [](Tensor &self, int64_t dim = -1) {
-                return self.unsqueeze(dim);
+            .def("squeeze", [](Tensor &self, int64_t dim) {
+                int64_t numDims = self.getShape().getNumDims();
+
+                if (dim <= -numDims || dim >= numDims) {
+                    throw py::index_error();
+                }
+
+                if (dim >= 0) {
+                    return self.squeeze(dim);
+                }
+
+                return self.squeeze(numDims + dim);
+            })
+            .def("squeeze", [](Tensor &self) {
+                return self.squeeze(-1);
+            })
+            .def("unsqueeze", [](Tensor &self, int64_t dim) {
+                int64_t numDims = self.getShape().getNumDims();
+
+                if (dim <= -numDims || dim >= numDims) {
+                    throw py::index_error();
+                }
+
+                if (dim >= 0) {
+                    return self.unsqueeze(dim);
+                }
+
+                return self.unsqueeze(numDims + dim);
+            })
+            .def("unsqueeze", [](Tensor &self) {
+                return self.unsqueeze(-1);
             })
             .def_static("arange", [](const Shape &shape, real start, real step) {
                 return Tensor::arange(shape, start, step);
@@ -90,6 +129,24 @@ void init_tensor_module(py::module_ &m) {
             })
             .def_static("from_const", [](const std::vector<size_t> &view, real c) {
                 return Tensor::fromConst(view, c);
+            })
+            .def_static("zeros", [](const Shape &shape) {
+                return Tensor::zeros(shape);
+            })
+            .def_static("zeros", [](const std::vector<size_t> &view) {
+                return Tensor::zeros(view);
+            })
+            .def_static("zeros_like", [](const Tensor &tensor) {
+                return Tensor::zerosLike(tensor);
+            })
+            .def_static("ones", [](const Shape &shape) {
+                return Tensor::ones(shape);
+            })
+            .def_static("ones", [](const std::vector<size_t> &view) {
+                return Tensor::ones(view);
+            })
+            .def_static("ones_like", [](const Tensor &tensor) {
+                return Tensor::onesLike(tensor);
             })
             .def_static("from_list", [](const Shape &shape, const std::vector<real> &data) {
                 return Tensor::fromVec(shape, data);
@@ -114,6 +171,9 @@ void init_tensor_module(py::module_ &m) {
             })
             .def("reshape", [](Tensor &self, const std::vector<size_t> &view) {
                 return self.reshape(view);
+            })
+            .def("flatten", [](Tensor &self) {
+                return self.flatten();
             })
             .def("perm", [](Tensor &self, const std::vector<size_t> &shapePerm) {
                 return self.perm(shapePerm);
@@ -233,17 +293,69 @@ void init_tensor_module(py::module_ &m) {
             .def("sigmoid", [](Tensor &self) {
                 return self.sigmoid();
             })
-            .def("softmax", [](Tensor &self, int64_t dim = -1) {
-                return self.softmax(dim);
+            .def("softmax", [](Tensor &self, int64_t dim) {
+                int64_t numDims = self.getShape().getNumDims();
+
+                if (dim <= -numDims || dim >= numDims) {
+                    throw py::index_error();
+                }
+
+                if (dim >= 0) {
+                    return self.softmax(dim);
+                }
+
+                return self.softmax(numDims + dim);
             })
-            .def("sum", [](Tensor &self, int64_t dim = -1) {
-                return self.sum(dim);
+            .def("softmax", [](Tensor &self) {
+                return self.softmax(-1);
             })
-            .def("max", [](Tensor &self, int64_t dim = -1) {
-                return self.max(dim);
+            .def("sum", [](Tensor &self, int64_t dim) {
+                int64_t numDims = self.getShape().getNumDims();
+
+                if (dim <= -numDims || dim >= numDims) {
+                    throw py::index_error();
+                }
+
+                if (dim >= 0) {
+                    return self.sum(dim);
+                }
+
+                return self.sum(numDims + dim);
             })
-            .def("min", [](Tensor &self, int64_t dim = -1) {
-                return self.min(dim);
+            .def("sum", [](Tensor &self) {
+                return self.sum(-1);
+            })
+            .def("max", [](Tensor &self, int64_t dim) {
+                int64_t numDims = self.getShape().getNumDims();
+
+                if (dim <= -numDims || dim >= numDims) {
+                    throw py::index_error();
+                }
+
+                if (dim >= 0) {
+                    return self.max(dim);
+                }
+
+                return self.max(numDims + dim);
+            })
+            .def("max", [](Tensor &self) {
+                return self.max(-1);
+            })
+            .def("min", [](Tensor &self, int64_t dim) {
+                int64_t numDims = self.getShape().getNumDims();
+
+                if (dim <= -numDims || dim >= numDims) {
+                    throw py::index_error();
+                }
+
+                if (dim >= 0) {
+                    return self.min(dim);
+                }
+
+                return self.min(numDims + dim);
+            })
+            .def("min", [](Tensor &self) {
+                return self.min(-1);
             })
             .def("forward", [](const Tensor &self) {
                 self.forward();
