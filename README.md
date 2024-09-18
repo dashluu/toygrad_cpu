@@ -17,7 +17,7 @@ for performance. There are still bugs internally so this project is not intended
 * C++ 20
 * Googletest library(optional)
 * Git
-* PyBind11 2.13.5
+* Pybind11 2.13.5
 * Python 3.12(see Python versions supported by PyBind11)
 
 ## :rocket: Quick start
@@ -33,41 +33,47 @@ cmake --build build
 
 ## :rocket: Features
 
-- :white_check_mark: element-wise add, sub, mul, div
-- :white_check_mark: negation
-- :white_check_mark: reciprocal
-- :white_check_mark: exponent
-- :white_check_mark: square
-- :white_check_mark: square root
-- :white_check_mark: log
-- :white_check_mark: pow
-- :white_check_mark: sin, cos
-- :white_check_mark: tensor indexing
-- :white_check_mark: randint
-- :white_check_mark: randn
-- :white_check_mark: arange
-- :white_check_mark: tensor with the same constant
-- :white_check_mark: tensor from an array or vector with the given shape
-- :white_check_mark: ==, !=, <, >, <=, >=
-- :white_check_mark: =, +=, -=, *=, /=
-- :white_check_mark: shape permutation
-- :white_check_mark: transpose
-- :white_check_mark: max, min
-- :white_check_mark: broadcasting
-- :white_check_mark: squeeze, unsqueeze
-- :white_check_mark: sum
-- :white_check_mark: relu
-- :white_check_mark: sigmoid
-- :x: reshape: currently shares memory when the tensor is contiguous but allocates new memory when the tensor is
-  non-contiguous
-- :x: stack
-- :x: cat
-- :white_check_mark: softmax
-- :white_check_mark: matmul: executes similarly to PyTorch where tensor multiplication is only applied in the last two
+### Implemented
+
+* Element-wise add, sub, mul, div
+* Negation
+* Reciprocal
+* Exponent
+* Square
+* Square root
+* Log
+* Pow
+* Sin, cos
+* Tensor indexing
+* Randint
+* Randn
+* Arange
+* Tensor with the same constant
+* Tensor from an array or vector with the given shape
+* ==, !=, <, >, <=, >=
+* =, +=, -=, *=, /=
+* Shape permutation
+* Transpose
+* Max, min
+* Broadcasting
+* Squeeze, unsqueeze
+* Sum
+* Relu
+* Sigmoid
+* Softmax
+* Matmul: executes similarly to PyTorch where tensor multiplication is only applied in the last two
   dimensions
-- :white_check_mark: backprop
-- :white_check_mark: lazy execution: waits until the computational graph is forwarded to compute tensor values
-- :x: Python support: in progress
+* Backprop
+* Lazy execution: waits until the computational graph is forwarded to compute tensor values
+
+### In progress
+
+* Python support
+* Stack: not implemented
+* Cat: not implemented
+* Flatten: not tested
+* Reshape: currently shares memory when the tensor is contiguous but allocates new memory when the tensor is
+  non-contiguous
 
 ## :computer: Code
 

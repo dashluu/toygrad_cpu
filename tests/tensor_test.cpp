@@ -31,8 +31,8 @@ TEST(TensorTestFixture, indexTensor1) {
     auto t1 = Tensor::arange({2, 3, 4}, 0);
     auto t2 = t1->at({1, 1});
     auto t3 = t1->at({r1, r2, r3});
-    GraphPtr graph1 = TensorGraph::fromTensor(t2.get());
-    GraphPtr graph2 = TensorGraph::fromTensor(t3.get());
+    auto graph1 = std::make_unique<TensorGraph>(t2.get());
+    auto graph2 = std::make_unique<TensorGraph>(t3.get());
     graph1->forward();
     graph2->forward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
@@ -58,7 +58,7 @@ TEST(TensorTestFixture, indexTensor2) {
     Range r7 = {0, 2, 1};
     Range r8 = {1, 4, 2};
     auto t3 = t2->at({r5, r6, r7, r8});
-    GraphPtr graph = TensorGraph::fromTensor(t3.get());
+    auto graph = std::make_unique<TensorGraph>(t3.get());
     graph->forward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     Shape s2({1, 1, 2, 4});
@@ -78,7 +78,7 @@ TEST(TensorTestFixture, sumTensor1) {
     Shape s1({1, 2, 12});
     auto t1 = Tensor::arange(s1, 0, 1);
     auto t2 = t1->sum();
-    GraphPtr graph = TensorGraph::fromTensor(t2.get());
+    auto graph = std::make_unique<TensorGraph>(t2.get());
     graph->forward();
     graph->backward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
@@ -95,7 +95,8 @@ TEST(TensorTestFixture, sumTensor2) {
     std::cout << std::endl << "Summing tensor 2:" << std::endl;
     auto t1 = Tensor::arange({2, 3, 4}, 0, 1);
     auto t2 = t1->sum(1);
-    GraphPtr graph = TensorGraph::fromTensor(t2.get());
+    auto t3 = t2->sum();
+    auto graph = std::make_unique<TensorGraph>(t3.get());
     graph->forward();
     graph->backward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
@@ -109,7 +110,7 @@ TEST(TensorTestFixture, sumTensor3) {
     std::cout << std::endl << "Summing tensor 3:" << std::endl;
     auto t1 = Tensor::arange({2, 3, 4, 5}, 0, 1);
     auto t2 = t1->sum(2);
-    GraphPtr graph = TensorGraph::fromTensor(t2.get());
+    auto graph = std::make_unique<TensorGraph>(t2.get());
     graph->forward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     real data[] = {
@@ -121,11 +122,68 @@ TEST(TensorTestFixture, sumTensor3) {
     assertEqTemplate(*t2, *x2);
 }
 
+void maxHelper(const TensorPtr &t1, const TensorPtr &x2, const TensorPtr &g1) {
+    auto t2 = t1->max(1);
+    auto t3 = t2->sum();
+    auto graph = std::make_unique<TensorGraph>(t3.get());
+    graph->forward();
+    graph->backward();
+    std::cout << "Original:" << std::endl << *t1 << std::endl;
+    x2->forward();
+    assertEqTemplate(*t2, *x2);
+    g1->forward();
+    assertEqTemplate(*t1->getGrad(), *g1);
+}
+
+TEST(TensorTestFixture, maxTensor1) {
+    std::cout << std::endl << "Maxing tensor 1:" << std::endl;
+    Shape s1({1, 2, 12});
+    std::vector<real> data1 = {
+        88, 99, 8, 35, 6, 54, 98, 67, 33, 93, 32, 1, 80, 95, 17, 72, 36, 41, 29, 1, 12, 87, 66, 43
+    };
+    auto t1 = Tensor::fromVec(s1, data1);
+    real data2[] = {88, 99, 17, 72, 36, 54, 98, 67, 33, 93, 66, 43};
+    auto x2 = Tensor::fromArr({1, 12}, data2);
+    real data3[] = {1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1};
+    auto g1 = Tensor::fromArr({1, 2, 12}, data3);
+    maxHelper(t1, x2, g1);
+}
+
+TEST(TensorTestFixture, maxTensor2) {
+    std::cout << std::endl << "Maxing tensor 2:" << std::endl;
+    Shape s1({2, 3, 4});
+    std::vector<real> data1 = {
+        96., 53., 94., 9., 90., 18., 27., 19., 81., 85., 89., 94.,
+        1., 15., 93., 0., 84., 8., 3., 92., 64., 45., 95., 48.
+    };
+    auto t1 = Tensor::fromVec(s1, data1);
+    real data2[] = {96., 85., 94., 94., 84., 45., 95., 92.};
+    auto x2 = Tensor::fromArr({2, 4}, data2);
+    real data3[] = {1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0};
+    auto g1 = Tensor::fromArr({2, 3, 4}, data3);
+    maxHelper(t1, x2, g1);
+}
+
+TEST(TensorTestFixture, maxTensor3) {
+    std::cout << std::endl << "Maxing tensor 3:" << std::endl;
+    Shape s1({2, 3, 4});
+    std::vector<real> data1 = {
+        -1.0438, -1.2152, 1.0221, 0.0760, -0.3217, -0.0919, 1.6960, -0.7410, -1.5835, 1.1612, 0.0114, -1.1448,
+        -0.7623, 0.6939, 0.3728, 0.0319, 1.6434, -0.6354, 0.8437, -0.3766, -0.4063, -2.9024, -0.5363, -1.0747
+    };
+    auto t1 = Tensor::fromVec(s1, data1);
+    real data2[] = {-0.3217, 1.1612, 1.6960, 0.0760, 1.6434, 0.6939, 0.8437, 0.0319};
+    auto x2 = Tensor::fromArr({2, 4}, data2);
+    real data3[] = {0., 0., 0., 1., 1., 0., 1., 0., 0., 1., 0., 0., 0., 1., 0., 1., 1., 0., 1., 0., 0., 0., 0., 0.};
+    auto g1 = Tensor::fromArr({2, 3, 4}, data3);
+    maxHelper(t1, x2, g1);
+}
+
 TEST(TensorTestFixture, permTensor1) {
     std::cout << std::endl << "Permute shape 1:" << std::endl;
     auto t1 = Tensor::arange({2, 3, 4}, 0);
     auto t2 = t1->perm({2, 1, 0});
-    GraphPtr graph = TensorGraph::fromTensor(t2.get());
+    auto graph = std::make_unique<TensorGraph>(t2.get());
     graph->forward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     real d2[] = {0, 12, 4, 16, 8, 20, 1, 13, 5, 17, 9, 21, 2, 14, 6, 18, 10, 22, 3, 15, 7, 19, 11, 23};
@@ -142,7 +200,7 @@ TEST(TensorTestFixture, indexPermTensor1) {
     auto t1 = Tensor::arange({2, 3, 4}, 0);
     auto t2 = t1->at({r1, r2, r3});
     auto t3 = t2->perm({2, 1, 0});
-    GraphPtr graph = TensorGraph::fromTensor(t3.get());
+    auto graph = std::make_unique<TensorGraph>(t3.get());
     graph->forward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     Shape s2({2, 1, 2});
@@ -186,7 +244,7 @@ TEST(TensorTestFixture, indexSumTensor1) {
     Range r3 = {0, 4, 2};
     auto t1 = Tensor::arange({2, 3, 4}, 0);
     auto t2 = t1->at({r1, r2, r3})->sum(1);
-    GraphPtr graph = TensorGraph::fromTensor(t2.get());
+    auto graph = std::make_unique<TensorGraph>(t2.get());
     graph->forward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     real d2[] = {4, 6, 16, 18};
@@ -201,7 +259,7 @@ TEST(TensorTestFixture, sumTensorGrad1) {
     auto t1 = Tensor::arange(s1, 0, 1);
     auto t2 = t1->sum(1);
     auto t3 = t2->sum();
-    GraphPtr graph = TensorGraph::fromTensor(t3.get());
+    auto graph = std::make_unique<TensorGraph>(t3.get());
     graph->forward();
     graph->backward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
@@ -214,7 +272,7 @@ TEST(TensorTestFixture, softmaxTensor1) {
     std::cout << std::endl << "Softmax tensor 1:" << std::endl;
     auto t1 = Tensor::arange({2, 3, 4}, 0, 1);
     auto t2 = t1->softmax();
-    GraphPtr graph = TensorGraph::fromTensor(t2.get());
+    auto graph = std::make_unique<TensorGraph>(t2.get());
     graph->forward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     std::cout << "Softmax:" << std::endl << *t2 << std::endl;
@@ -224,7 +282,7 @@ TEST(TensorTestFixture, softmaxTensor2) {
     std::cout << std::endl << "Softmax tensor 2:" << std::endl;
     auto t1 = Tensor::arange({2, 3, 4}, 0, 1);
     auto t2 = t1->softmax(1);
-    GraphPtr graph = TensorGraph::fromTensor(t2.get());
+    auto graph = std::make_unique<TensorGraph>(t2.get());
     graph->forward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     std::cout << "Softmax:" << std::endl << *t2 << std::endl;
@@ -237,7 +295,7 @@ TEST(TensorTestFixture, softmaxTensor3) {
     Range r3 = {0, 4, 2};
     auto t1 = Tensor::arange({2, 3, 4}, 0);
     auto t2 = t1->at({r1, r2, r3})->softmax(0);
-    GraphPtr graph = TensorGraph::fromTensor(t2.get());
+    auto graph = std::make_unique<TensorGraph>(t2.get());
     graph->forward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     std::cout << "Softmax:" << std::endl << *t2 << std::endl;
@@ -250,7 +308,7 @@ TEST(TensorTestFixture, softmax4) {
     Range r3 = {0, 4, 2};
     auto t1 = Tensor::arange({2, 3, 4}, 0);
     auto t2 = t1->at({r1, r2, r3})->perm({1, 2, 0})->softmax(1);
-    GraphPtr graph = TensorGraph::fromTensor(t2.get());
+    auto graph = std::make_unique<TensorGraph>(t2.get());
     graph->forward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     std::cout << "Softmax:" << std::endl << *t2 << std::endl;
@@ -258,7 +316,7 @@ TEST(TensorTestFixture, softmax4) {
 
 void broadcastTensorHelper(const TensorPtr &t1, const std::vector<size_t> &v2, real *d2) {
     auto t2 = t1->broadcastTo(v2);
-    GraphPtr graph = TensorGraph::fromTensor(t2.get());
+    auto graph = std::make_unique<TensorGraph>(t2.get());
     graph->forward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     auto x2 = Tensor::fromArr(v2, d2);
@@ -327,7 +385,7 @@ TEST(TensorTestFixture, broadcastTensor3) {
 
 void squeezeHelper(const TensorPtr &t1, int64_t dim, const std::vector<size_t> &v2, real *d2) {
     auto t2 = t1->squeeze(dim);
-    GraphPtr graph = TensorGraph::fromTensor(t2.get());
+    auto graph = std::make_unique<TensorGraph>(t2.get());
     graph->forward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     auto x2 = Tensor::fromArr(v2, d2);
@@ -380,7 +438,7 @@ TEST(TensorTestFixture, squeeze2) {
 
 void unsqueezeHelper(const TensorPtr &t1, int64_t dim, const std::vector<size_t> &v2, real *d2) {
     auto t2 = t1->unsqueeze(dim);
-    GraphPtr graph = TensorGraph::fromTensor(t2.get());
+    auto graph = std::make_unique<TensorGraph>(t2.get());
     graph->forward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     auto x2 = Tensor::fromArr(v2, d2);
@@ -407,7 +465,7 @@ void matmulHelper(const std::vector<size_t> &v1, real start1, const std::vector<
     auto t1 = Tensor::arange(v1, start1);
     auto t2 = Tensor::arange(v2, start2);
     auto t3 = t1->matmul(t2);
-    GraphPtr graph = TensorGraph::fromTensor(t3.get());
+    auto graph = std::make_unique<TensorGraph>(t3.get());
     graph->forward();
     std::cout << "Matrix 1:" << std::endl << *t1 << std::endl;
     std::cout << "Matrix 2:" << std::endl << *t2 << std::endl;
@@ -440,4 +498,35 @@ TEST(TensorTestFixture, matmul2) {
     matmulHelper({2, 2, 3}, 0, {2, 3, 4}, 0, d1);
     matmulHelper({3, 1, 3, 6}, 1, {3, 1, 6, 4}, 1, d2);
     matmulHelper({1, 2, 1}, 5, {1, 1, 3}, 3, d3);
+}
+
+TEST(TensorTestFixture, matmul3) {
+    std::cout << std::endl << "Matmul 3:" << std::endl;
+    real d1[] = {
+        41., 63., 68., 83., 5., 59., 95., 99., 47., 13., 57., 77., 6., 0., 28., 57., 0., 96., 25., 16., 84., 88., 54.,
+        5.
+    };
+    auto t1 = Tensor::fromArr({2, 3, 4}, d1);
+    real d2[] = {22., 31., 7., 55., 36., 27., 72., 3., 86., 90., 85., 66., 95., 12., 7., 93.};
+    auto t2 = Tensor::fromArr({2, 4, 2}, d2);
+    auto t3 = t1->matmul(t2);
+    auto t4 = t3->sum();
+    auto graph = std::make_unique<TensorGraph>(t4.get());
+    graph->forward();
+    graph->backward();
+    real d3[] = {9767., 6821., 11071., 6262., 8721., 3942., 3575., 6177., 10647., 8124., 19869., 14481.};
+    auto x3 = Tensor::fromArr({2, 3, 2}, d3);
+    x3->forward();
+    assertEqTemplate(*t3, *x3);
+    real d4[] = {
+        53., 62., 63., 75., 53., 62., 63., 75., 53., 62., 63., 75., 176., 151., 107., 100., 176., 151., 107., 100.,
+        176., 151., 107., 100.
+    };
+    auto g1 = Tensor::fromArr({2, 3, 4}, d4);
+    g1->forward();
+    assertEqTemplate(*t1->getGrad(), *g1);
+    real d5[] = {93., 93., 135., 135., 220., 220., 259., 259., 90., 90., 184., 184., 107., 107., 78., 78.};
+    auto g2 = Tensor::fromArr({2, 4, 2}, d5);
+    g2->forward();
+    assertEqTemplate(*t2->getGrad(), *g2);
 }

@@ -21,9 +21,8 @@ namespace Toygrad::Tensor {
 
     public:
         explicit TensorGraph(Tensor *root): root(root) {
+            sort();
         }
-
-        static GraphPtr fromTensor(Tensor *tensor);
 
         void forward() const;
 
