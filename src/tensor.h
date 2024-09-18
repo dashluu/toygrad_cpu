@@ -78,14 +78,14 @@ namespace Toygrad::Tensor {
 
         void initGrad() {
             if (grad == nullptr) {
-                grad = initTensor(shape);
+                grad = initTensor(shape, false);
                 grad->initVec();
             }
         }
 
         void initGrad(real c) {
             if (grad == nullptr) {
-                grad = initTensor(shape);
+                grad = initTensor(shape, false);
                 grad->initVec(c);
             }
         }
@@ -292,6 +292,78 @@ namespace Toygrad::Tensor {
          */
         static TensorPtr fromConst(const std::vector<size_t> &view, real c) {
             return fromConst(Shape(view), c);
+        }
+
+        /**
+         * Creates a new tensor containing 0s.
+         * @param shape the shape of the tensor.
+         * @return the newly created tensor.
+         */
+        static TensorPtr zeros(const Shape &shape) {
+            return fromConst(shape, 0.0);
+        }
+
+        /**
+         * Creates a new tensor containing 0s.
+         * @param view the view of the shape of the tensor.
+         * @return the newly created tensor.
+         */
+        static TensorPtr zeros(const std::vector<size_t> &view) {
+            return fromConst(view, 0.0);
+        }
+
+        /**
+         * Creates a new tensor with 0s whose shape is the same as the given tensor.
+         * @param tensor the tensor whose shape is the same as that of the new tensor.
+         * @return the newly created tensor.
+         */
+        static TensorPtr zerosLike(const TensorPtr &tensor) {
+            return zeros(tensor->shape);
+        }
+
+        /**
+         * Creates a new tensor with 0s whose shape is the same as the given tensor.
+         * @param tensor the tensor whose shape is the same as that of the new tensor.
+         * @return the newly created tensor.
+         */
+        static TensorPtr zerosLike(const Tensor &tensor) {
+            return zeros(tensor.shape);
+        }
+
+        /**
+         * Creates a new tensor containing 1s.
+         * @param shape the shape of the tensor.
+         * @return the newly created tensor.
+         */
+        static TensorPtr ones(const Shape &shape) {
+            return fromConst(shape, 1.0);
+        }
+
+        /**
+         * Creates a new tensor containing 1s.
+         * @param view the view of the shape of the tensor.
+         * @return the newly created tensor.
+         */
+        static TensorPtr ones(const std::vector<size_t> &view) {
+            return fromConst(view, 1.0);
+        }
+
+        /**
+         * Creates a new tensor with 1s whose shape is the same as the given tensor.
+         * @param tensor the tensor whose shape is the same as that of the new tensor.
+         * @return the newly created tensor.
+         */
+        static TensorPtr onesLike(const TensorPtr &tensor) {
+            return ones(tensor->shape);
+        }
+
+        /**
+         * Creates a new tensor with 1s whose shape is the same as the given tensor.
+         * @param tensor the tensor whose shape is the same as that of the new tensor.
+         * @return the newly created tensor.
+         */
+        static TensorPtr onesLike(const Tensor &tensor) {
+            return ones(tensor.shape);
         }
 
         /**
@@ -749,6 +821,12 @@ namespace Toygrad::Tensor {
         TensorPtr reshape(const std::vector<size_t> &view) {
             return reshape(Shape(view));
         }
+
+        /**
+         * Flattens the tensor.
+         * @return the result tensor.
+         */
+        TensorPtr flatten() { return reshape({shape.getSize()}); }
 
         /**
          * Computes the summation in a given tensor dimension.

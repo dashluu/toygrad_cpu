@@ -31,12 +31,6 @@ namespace Toygrad::Tensor {
         recurSort(root, visited);
     }
 
-    GraphPtr TensorGraph::fromTensor(Tensor *tensor) {
-        auto graph = std::make_unique<TensorGraph>(tensor);
-        graph->sort();
-        return graph;
-    }
-
     void TensorGraph::forward() const {
         for (auto &tensor: tensors) {
             tensor->forward();

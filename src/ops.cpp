@@ -4,10 +4,14 @@
 
 #include "ops.h"
 #include "tensor_iter.h"
+#include "tensor_graph.h"
 
 namespace Toygrad::Tensor {
     void ConstOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         DenseIter iter(tensor);
 
         for (iter.start(); iter.hasNext(); iter.next()) {
@@ -16,7 +20,10 @@ namespace Toygrad::Tensor {
     }
 
     void ArangeOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         DenseIter iter(tensor);
         size_t i = 0;
 
@@ -27,7 +34,10 @@ namespace Toygrad::Tensor {
     }
 
     void RandintOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         DenseIter iter(tensor);
 
         for (iter.start(); iter.hasNext(); iter.next()) {
@@ -36,7 +46,10 @@ namespace Toygrad::Tensor {
     }
 
     void RandnOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         DenseIter iter(tensor);
 
         for (iter.start(); iter.hasNext(); iter.next()) {
@@ -45,7 +58,10 @@ namespace Toygrad::Tensor {
     }
 
     void FromArrOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         DenseIter iter(tensor);
         size_t i = 0;
 
@@ -56,7 +72,10 @@ namespace Toygrad::Tensor {
     }
 
     void SumOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
         real sum = 0.f;
@@ -69,11 +88,9 @@ namespace Toygrad::Tensor {
             outIter->start();
             outIter->curr() = sum;
         } else {
-            opIter->start();
-            outIter->start();
             size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
 
-            while (opIter->hasNext()) {
+            for (opIter->start(), outIter->start(); opIter->hasNext(); opIter->next()) {
                 if (opIter->count() > lastDim && (opIter->count() - 1) % lastDim == 0) {
                     outIter->curr() = sum;
                     outIter->next();
@@ -81,8 +98,6 @@ namespace Toygrad::Tensor {
                 } else {
                     sum += opIter->curr();
                 }
-
-                opIter->next();
             }
 
             outIter->curr() = sum;
@@ -90,7 +105,10 @@ namespace Toygrad::Tensor {
     }
 
     void SumOp::backward() {
-        tensor->initGrad(1.f);
+        if (dim == -1) {
+            tensor->initGrad(1.f);
+        }
+
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opGradIter = initIter(operand->grad.get());
@@ -103,24 +121,25 @@ namespace Toygrad::Tensor {
                 opGradIter->curr() += outGradIter->curr();
             }
         } else {
-            opGradIter->start();
-            outGradIter->start();
             size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
 
-            while (opGradIter->hasNext()) {
-                opGradIter->curr() += outGradIter->curr();
-
+            for (opGradIter->start(), outGradIter->start();
+                 opGradIter->hasNext();
+                 opGradIter->next()) {
                 if (opGradIter->count() > lastDim && (opGradIter->count() - 1) % lastDim == 0) {
                     outGradIter->next();
                 }
 
-                opGradIter->next();
+                opGradIter->curr() += outGradIter->curr();
             }
         }
     }
 
     void AddOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -157,7 +176,10 @@ namespace Toygrad::Tensor {
     }
 
     void SubOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -194,7 +216,10 @@ namespace Toygrad::Tensor {
     }
 
     void MulOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -237,7 +262,10 @@ namespace Toygrad::Tensor {
     }
 
     void DivOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -280,7 +308,10 @@ namespace Toygrad::Tensor {
     }
 
     void PowOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -306,7 +337,10 @@ namespace Toygrad::Tensor {
     }
 
     void LogOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -332,7 +366,10 @@ namespace Toygrad::Tensor {
     }
 
     void SinOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -358,7 +395,10 @@ namespace Toygrad::Tensor {
     }
 
     void CosOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -384,7 +424,10 @@ namespace Toygrad::Tensor {
     }
 
     void ExpOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -410,7 +453,10 @@ namespace Toygrad::Tensor {
     }
 
     void RecipOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -421,7 +467,6 @@ namespace Toygrad::Tensor {
 
     void RecipOp::backward() {
         operand->initGrad();
-
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opIter = initIter(operand.get());
         IterPtr opGradIter = initIter(operand->grad.get());
@@ -437,7 +482,10 @@ namespace Toygrad::Tensor {
     }
 
     void NegOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -462,7 +510,10 @@ namespace Toygrad::Tensor {
     }
 
     void SqOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -488,7 +539,10 @@ namespace Toygrad::Tensor {
     }
 
     void SqrtOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -518,7 +572,10 @@ namespace Toygrad::Tensor {
     }
 
     void EqOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -531,7 +588,10 @@ namespace Toygrad::Tensor {
     }
 
     void NeqOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -544,7 +604,10 @@ namespace Toygrad::Tensor {
     }
 
     void LessOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -557,7 +620,10 @@ namespace Toygrad::Tensor {
     }
 
     void GreaterOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -570,7 +636,10 @@ namespace Toygrad::Tensor {
     }
 
     void LeqOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -583,7 +652,10 @@ namespace Toygrad::Tensor {
     }
 
     void GeqOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -596,7 +668,10 @@ namespace Toygrad::Tensor {
     }
 
     void MaxOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
         opIter->start();
@@ -606,25 +681,20 @@ namespace Toygrad::Tensor {
         }
 
         real max = opIter->curr();
-        opIter->next();
 
         if (dim == -1) {
-            while (opIter->hasNext()) {
+            for (opIter->start(); opIter->hasNext(); opIter->next()) {
                 if (opIter->curr() > max) {
                     max = opIter->curr();
                 }
-
-                opIter->next();
             }
 
             outIter->start();
             outIter->curr() = max;
         } else {
-            opIter->start();
-            outIter->start();
             size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
 
-            while (opIter->hasNext()) {
+            for (opIter->start(), outIter->start(); opIter->hasNext(); opIter->next()) {
                 if (opIter->count() > lastDim && (opIter->count() - 1) % lastDim == 0) {
                     outIter->curr() = max;
                     outIter->next();
@@ -632,8 +702,6 @@ namespace Toygrad::Tensor {
                 } else if (opIter->curr() > max) {
                     max = opIter->curr();
                 }
-
-                opIter->next();
             }
 
             outIter->curr() = max;
@@ -641,6 +709,10 @@ namespace Toygrad::Tensor {
     }
 
     void MaxOp::backward() {
+        if (dim == -1) {
+            tensor->initGrad(1.f);
+        }
+
         operand->initGrad();
         IterPtr outIter = initIter(tensor);
         IterPtr outGradIter = initIter(tensor->grad.get());
@@ -653,36 +725,34 @@ namespace Toygrad::Tensor {
         if (dim == -1) {
             for (opIter->start(), opGradIter->start(), outIter->start(), outGradIter->start();
                  opGradIter->hasNext();
-                 opGradIter->next()) {
+                 opGradIter->next(), opIter->next()) {
                 if (outIter->curr() == opIter->curr()) {
                     opGradIter->curr() += outGradIter->curr();
                 }
             }
         } else {
-            opIter->start();
-            opGradIter->start();
-            outIter->start();
-            outGradIter->start();
             size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
 
-            while (opGradIter->hasNext()) {
-                if (outIter->curr() == opIter->curr()) {
-                    opGradIter->curr() += outGradIter->curr();
-                }
-
+            for (opIter->start(), opGradIter->start(), outIter->start(), outGradIter->start();
+                 opGradIter->hasNext();
+                 opGradIter->next(), opIter->next()) {
                 if (opGradIter->count() > lastDim && (opGradIter->count() - 1) % lastDim == 0) {
                     outIter->next();
                     outGradIter->next();
                 }
 
-                opIter->next();
-                opGradIter->next();
+                if (outIter->curr() == opIter->curr()) {
+                    opGradIter->curr() += outGradIter->curr();
+                }
             }
         }
     }
 
     void MinOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
         opIter->start();
@@ -692,25 +762,20 @@ namespace Toygrad::Tensor {
         }
 
         real min = opIter->curr();
-        opIter->next();
 
         if (dim == -1) {
-            while (opIter->hasNext()) {
+            for (opIter->start(); opIter->hasNext(); opIter->next()) {
                 if (opIter->curr() < min) {
                     min = opIter->curr();
                 }
-
-                opIter->next();
             }
 
             outIter->start();
             outIter->curr() = min;
         } else {
-            opIter->start();
-            outIter->start();
             size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
 
-            while (opIter->hasNext()) {
+            for (opIter->start(), outIter->start(); opIter->hasNext(); opIter->next()) {
                 if (opIter->count() > lastDim && (opIter->count() - 1) % lastDim == 0) {
                     outIter->curr() = min;
                     outIter->next();
@@ -718,8 +783,6 @@ namespace Toygrad::Tensor {
                 } else if (opIter->curr() < min) {
                     min = opIter->curr();
                 }
-
-                opIter->next();
             }
 
             outIter->curr() = min;
@@ -727,6 +790,10 @@ namespace Toygrad::Tensor {
     }
 
     void MinOp::backward() {
+        if (dim == -1) {
+            tensor->initGrad(1.f);
+        }
+
         operand->initGrad();
         IterPtr outIter = initIter(tensor);
         IterPtr outGradIter = initIter(tensor->grad.get());
@@ -739,30 +806,25 @@ namespace Toygrad::Tensor {
         if (dim == -1) {
             for (opIter->start(), opGradIter->start(), outIter->start(), outGradIter->start();
                  opGradIter->hasNext();
-                 opGradIter->next()) {
+                 opGradIter->next(), opIter->next()) {
                 if (outIter->curr() == opIter->curr()) {
                     opGradIter->curr() += outGradIter->curr();
                 }
             }
         } else {
-            opIter->start();
-            opGradIter->start();
-            outIter->start();
-            outGradIter->start();
             size_t lastDim = operand->shape[operand->shape.getNumDims() - 1];
 
-            while (opGradIter->hasNext()) {
-                if (outIter->curr() == opIter->curr()) {
-                    opGradIter->curr() += outGradIter->curr();
-                }
-
+            for (opIter->start(), opGradIter->start(), outIter->start(), outGradIter->start();
+                 opGradIter->hasNext();
+                 opGradIter->next(), opIter->next()) {
                 if (opGradIter->count() > lastDim && (opGradIter->count() - 1) % lastDim == 0) {
                     outIter->next();
                     outGradIter->next();
                 }
 
-                opIter->next();
-                opGradIter->next();
+                if (outIter->curr() == opIter->curr()) {
+                    opGradIter->curr() += outGradIter->curr();
+                }
             }
         }
     }
@@ -773,6 +835,9 @@ namespace Toygrad::Tensor {
 
     void PermOp::backward() {
         operand->initGrad();
+        Shape opShape = operand->grad->shape;
+        // Temporarily use the shape to that of the resulting tensor for easy mapping
+        operand->grad->shape = tensor->grad->shape;
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opGradIter = initIter(operand->grad.get());
 
@@ -781,10 +846,16 @@ namespace Toygrad::Tensor {
              outGradIter->next(), opGradIter->next()) {
             opGradIter->curr() = outGradIter->curr();
         }
+
+        // Switch the shape back to the original
+        operand->grad->shape = opShape;
     }
 
     void ReluOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -810,7 +881,10 @@ namespace Toygrad::Tensor {
     }
 
     void SigmoidOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -837,7 +911,10 @@ namespace Toygrad::Tensor {
     }
 
     void CopyOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr opIter = initIter(operand.get());
 
@@ -846,8 +923,16 @@ namespace Toygrad::Tensor {
         }
     }
 
+    MatmulOp::~MatmulOp() {
+        delete lhsGradGraph;
+        delete rhsGradGraph;
+    }
+
     void MatmulOp::forward() {
-        tensor->initVec();
+        if (tensor->vec == nullptr) {
+            tensor->initVec();
+        }
+
         IterPtr outIter = initIter(tensor);
         IterPtr lhsIter = initIter(lhs.get());
         IterPtr rhsIter = initIter(rhs.get());
@@ -888,10 +973,16 @@ namespace Toygrad::Tensor {
     }
 
     void MatmulOp::backward() {
-        lhs->initGrad();
-        rhs->initGrad();
-        // rhs already switches the last two dimensions so no need to do transpose here
-        lhs->grad = tensor->grad->matmul(rhs);
-        rhs->grad = lhs->T(lhs->shape.getNumDims() - 2)->matmul(tensor->grad);
+        if (lhs->grad == nullptr) {
+            // First-time initialization
+            // rhs already switches the last two dimensions so no need to do transpose here
+            lhs->grad = tensor->grad->matmul(rhs);
+            lhsGradGraph = new TensorGraph(lhs->grad.get());
+            rhs->grad = lhs->T(lhs->shape.getNumDims() - 2)->matmul(tensor->grad);
+            rhsGradGraph = new TensorGraph(rhs->grad.get());
+        }
+
+        lhsGradGraph->forward();
+        rhsGradGraph->forward();
     }
 }

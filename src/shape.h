@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <vector>
 
 #include "common.h"
@@ -90,6 +91,24 @@ namespace Toygrad::Tensor {
 
         bool operator!=(const Shape &rhs) const {
             return !(*this == rhs);
+        }
+
+        friend std::ostream &operator<<(std::ostream &stream, const Shape &shape) {
+            stream << "offset: " << shape.offset << ", ";
+            stream << "view: ";
+
+            for (auto v: shape.view) {
+                stream << v << ", ";
+            }
+
+            stream << "strides: ";
+
+            for (auto s: shape.strides) {
+                stream << s << ", ";
+            }
+
+            stream << std::endl;
+            return stream;
         }
 
         Shape &operator=(const Shape &rhs) {

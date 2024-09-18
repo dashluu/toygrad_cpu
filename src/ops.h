@@ -52,7 +52,7 @@ namespace Toygrad::Tensor {
         TensorPtr rhs;
 
         BinOp(OpName opName, const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): Op(OpType::BIN_OP, opName,
-            tensor), lhs(lhs), rhs(rhs) {
+                tensor), lhs(lhs), rhs(rhs) {
             lhs->edges.push_back(tensor);
             rhs->edges.push_back(tensor);
         }
@@ -381,8 +381,14 @@ namespace Toygrad::Tensor {
     };
 
     struct MatmulOp final : BinOp {
+        // Since TensorGraph is incomplete, raw pointers are used
+        TensorGraph *lhsGradGraph = nullptr;
+        TensorGraph *rhsGradGraph = nullptr;
+
         MatmulOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): BinOp(OpName::MATMUL, lhs, rhs, tensor) {
         }
+
+        ~MatmulOp() override;
 
         void forward() override;
 
