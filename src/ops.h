@@ -15,7 +15,7 @@ namespace Toygrad::Tensor {
     enum class OpName {
         INDEX, CONST, ARANGE, FROM_ARR, RANDINT, RANDN,
         ADD, SUB, MUL, DIV, POW, LOG, SIN, COS, EXP, RECIP, NEG, SQ, SQRT, MATMUL,
-        ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, ALIAS, PERM,
+        ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, ALIAS, DIFF_ALIAS, PERM,
         EQ, NEQ, LESS, GREATER, LEQ, GEQ, MAX, MIN,
         RELU, SUM, SIGMOID, SOFTMAX,
         COPY
@@ -248,7 +248,7 @@ namespace Toygrad::Tensor {
     };
 
     struct NegOp final : UnOp {
-        explicit NegOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::NEG, operand, tensor) {
+        NegOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::NEG, operand, tensor) {
         }
 
         void forward() override;
@@ -257,7 +257,7 @@ namespace Toygrad::Tensor {
     };
 
     struct SqOp final : UnOp {
-        explicit SqOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::SQ, operand, tensor) {
+        SqOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::SQ, operand, tensor) {
         }
 
         void forward() override;
@@ -266,7 +266,7 @@ namespace Toygrad::Tensor {
     };
 
     struct SqrtOp final : UnOp {
-        explicit SqrtOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::SQRT, operand, tensor) {
+        SqrtOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::SQRT, operand, tensor) {
         }
 
         void forward() override;
@@ -275,10 +275,19 @@ namespace Toygrad::Tensor {
     };
 
     struct AliasOp final : UnOp {
-        explicit AliasOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::ALIAS, operand, tensor) {
+        AliasOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::ALIAS, operand, tensor) {
         }
 
         void forward() override;
+    };
+
+    struct DiffAliasOp final : UnOp {
+        DiffAliasOp(const TensorPtr &operand, Tensor *tensor): UnOp(OpName::ALIAS, operand, tensor) {
+        }
+
+        void forward() override;
+
+        void backward() override;
     };
 
     struct EqOp final : BinOp {
@@ -381,14 +390,8 @@ namespace Toygrad::Tensor {
     };
 
     struct MatmulOp final : BinOp {
-        // Since TensorGraph is incomplete, raw pointers are used
-        TensorGraph *lhsGradGraph = nullptr;
-        TensorGraph *rhsGradGraph = nullptr;
-
         MatmulOp(const TensorPtr &lhs, const TensorPtr &rhs, Tensor *tensor): BinOp(OpName::MATMUL, lhs, rhs, tensor) {
         }
-
-        ~MatmulOp() override;
 
         void forward() override;
 
