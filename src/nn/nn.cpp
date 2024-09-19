@@ -3,7 +3,7 @@
 //
 
 #include "nn.h"
-#include "ops.h"
+#include "tensors/ops.h"
 
 namespace Toygrad::NN {
     Tensor::TensorPtr Module::init(const std::vector<Tensor::TensorPtr> &x) {

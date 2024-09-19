@@ -3,8 +3,8 @@
 //
 
 #include "gtest/gtest.h"
-#include "tensor.h"
-#include "tensor_graph.h"
+#include "tensors/tensor.h"
+#include "tensors/tensor_graph.h"
 
 using namespace Toygrad::Tensor;
 
@@ -17,7 +17,7 @@ protected:
     }
 };
 
-void assertEqTemplate(Tensor &actual, Tensor &expected) {
+auto assertEqTemplate(const Tensor &actual, const Tensor &expected) {
     std::cout << "Actual:" << std::endl << actual << std::endl;
     std::cout << "Expected:" << std::endl << expected << std::endl;
     ASSERT_EQ(actual, expected);

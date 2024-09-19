@@ -4,7 +4,7 @@
 
 #include "ops.h"
 
-#include "str_assert.h"
+#include "assert/str_assert.h"
 #include "tensor_iter.h"
 #include "tensor_graph.h"
 

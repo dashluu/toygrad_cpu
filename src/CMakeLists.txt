@@ -1,26 +1,26 @@
 project(toygrad_cpu_lib)
 
 set(HEADER FILES
-        shape.h
-        str_assert.h
-        tensor.h
-        vec.h
+        tensors/shape.h
+        assert/str_assert.h
+        tensors/tensor.h
+        tensors/vec.h
         common.h
-        ops.h
-        rand_gen.h
-        tensor_iter.h
-        tensor_graph.h
-        nn.h
+        tensors/ops.h
+        tensors/rand_gen.h
+        tensors/tensor_iter.h
+        tensors/tensor_graph.h
+        nn/nn.h
 )
 
 set(SRC_FILES
-        str_assert.cpp
-        tensor.cpp
-        vec.cpp
-        ops.cpp
-        tensor_iter.cpp
-        tensor_graph.cpp
-        nn.cpp
+        assert/str_assert.cpp
+        tensors/tensor.cpp
+        tensors/vec.cpp
+        tensors/ops.cpp
+        tensors/tensor_iter.cpp
+        tensors/tensor_graph.cpp
+        nn/nn.cpp
 )
 
 add_library(toygrad_cpu_lib STATIC ${SRC_FILES} ${HEADER_FILES})

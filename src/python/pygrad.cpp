@@ -4,8 +4,7 @@
 
 #include <sstream>
 #include "pygrad.h"
-#include "ops.h"
-#include "tensor_graph.h"
+#include "tensors/ops.h"
 
 using namespace Toygrad::Tensor;
 

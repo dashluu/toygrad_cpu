@@ -3,7 +3,7 @@
 //
 
 #pragma once
-#include "tensor_graph.h"
+#include "tensors/tensor_graph.h"
 
 namespace Toygrad::NN {
     class Module {
