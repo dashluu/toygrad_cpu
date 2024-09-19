@@ -3,6 +3,8 @@
 //
 
 #include "ops.h"
+
+#include "str_assert.h"
 #include "tensor_iter.h"
 #include "tensor_graph.h"
 
@@ -109,6 +111,7 @@ namespace Toygrad::Tensor {
             tensor->initGrad(1.f);
         }
 
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opGradIter = initIter(operand->grad.get());
@@ -152,6 +155,7 @@ namespace Toygrad::Tensor {
     }
 
     void AddOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         lhs->initGrad();
         rhs->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
@@ -192,6 +196,7 @@ namespace Toygrad::Tensor {
     }
 
     void SubOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         lhs->initGrad();
         rhs->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
@@ -232,6 +237,7 @@ namespace Toygrad::Tensor {
     }
 
     void MulOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         lhs->initGrad();
         rhs->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
@@ -278,6 +284,7 @@ namespace Toygrad::Tensor {
     }
 
     void DivOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         lhs->initGrad();
         rhs->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
@@ -321,6 +328,7 @@ namespace Toygrad::Tensor {
     }
 
     void PowOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opIter = initIter(operand.get());
@@ -350,6 +358,7 @@ namespace Toygrad::Tensor {
     }
 
     void LogOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opIter = initIter(operand.get());
@@ -379,6 +388,7 @@ namespace Toygrad::Tensor {
     }
 
     void SinOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opIter = initIter(operand.get());
@@ -408,6 +418,7 @@ namespace Toygrad::Tensor {
     }
 
     void CosOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opIter = initIter(operand.get());
@@ -437,6 +448,7 @@ namespace Toygrad::Tensor {
     }
 
     void ExpOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opIter = initIter(operand.get());
@@ -466,6 +478,7 @@ namespace Toygrad::Tensor {
     }
 
     void RecipOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opIter = initIter(operand.get());
@@ -495,6 +508,7 @@ namespace Toygrad::Tensor {
     }
 
     void NegOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opGradIter = initIter(operand->grad.get());
@@ -523,6 +537,7 @@ namespace Toygrad::Tensor {
     }
 
     void SqOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opIter = initIter(operand.get());
@@ -552,6 +567,7 @@ namespace Toygrad::Tensor {
     }
 
     void SqrtOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opIter = initIter(operand.get());
@@ -569,6 +585,15 @@ namespace Toygrad::Tensor {
 
     void AliasOp::forward() {
         tensor->vec = operand->vec;
+    }
+
+    void DiffAliasOp::forward() {
+        tensor->vec = operand->vec;
+    }
+
+    void DiffAliasOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
+        operand->grad = tensor->grad;
     }
 
     void EqOp::forward() {
@@ -713,6 +738,7 @@ namespace Toygrad::Tensor {
             tensor->initGrad(1.f);
         }
 
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         IterPtr outIter = initIter(tensor);
         IterPtr outGradIter = initIter(tensor->grad.get());
@@ -794,6 +820,7 @@ namespace Toygrad::Tensor {
             tensor->initGrad(1.f);
         }
 
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         IterPtr outIter = initIter(tensor);
         IterPtr outGradIter = initIter(tensor->grad.get());
@@ -834,6 +861,7 @@ namespace Toygrad::Tensor {
     }
 
     void PermOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         Shape opShape = operand->grad->shape;
         // Temporarily use the shape to that of the resulting tensor for easy mapping
@@ -865,6 +893,7 @@ namespace Toygrad::Tensor {
     }
 
     void ReluOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opIter = initIter(operand.get());
@@ -894,6 +923,7 @@ namespace Toygrad::Tensor {
     }
 
     void SigmoidOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
         operand->initGrad();
         IterPtr outGradIter = initIter(tensor->grad.get());
         IterPtr opIter = initIter(operand.get());
@@ -921,11 +951,6 @@ namespace Toygrad::Tensor {
         for (outIter->start(), opIter->start(); outIter->hasNext(); outIter->next(), opIter->next()) {
             outIter->curr() = opIter->curr();
         }
-    }
-
-    MatmulOp::~MatmulOp() {
-        delete lhsGradGraph;
-        delete rhsGradGraph;
     }
 
     void MatmulOp::forward() {
@@ -973,16 +998,15 @@ namespace Toygrad::Tensor {
     }
 
     void MatmulOp::backward() {
+        assert(str_assert(tensor->grad != nullptr, AssertMessage::backpropFromNull));
+
         if (lhs->grad == nullptr) {
-            // First-time initialization
             // rhs already switches the last two dimensions so no need to do transpose here
             lhs->grad = tensor->grad->matmul(rhs);
-            lhsGradGraph = new TensorGraph(lhs->grad.get());
             rhs->grad = lhs->T(lhs->shape.getNumDims() - 2)->matmul(tensor->grad);
-            rhsGradGraph = new TensorGraph(rhs->grad.get());
         }
 
-        lhsGradGraph->forward();
-        rhsGradGraph->forward();
+        lhs->grad->forward();
+        rhs->grad->forward();
     }
 }
