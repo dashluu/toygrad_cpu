@@ -12,7 +12,6 @@ using namespace Toygrad::Tensor;
 PYBIND11_MODULE(toygrad_cpu, m) {
     init_vec_module(m);
     init_shape_module(m);
-    init_graph_module(m);
     init_tensor_module(m);
 }
 
@@ -39,19 +38,6 @@ void init_shape_module(py::module_ &m) {
             .def("__getitem__", [](Shape &self, unsigned index) { return self[index]; });
 }
 
-void init_graph_module(py::module_ &m) {
-    py::class_<TensorGraph>(m, "TensorGraph")
-            .def_static("from_tensor", [](Tensor &tensor) {
-                return std::make_unique<TensorGraph>(&tensor);
-            })
-            .def("forward", [](const TensorGraph &self) {
-                return self.forward();
-            })
-            .def("backward", [](const TensorGraph &self) {
-                return self.backward();
-            });
-}
-
 void init_tensor_module(py::module_ &m) {
     py::class_<Tensor, std::shared_ptr<Tensor> >(m, "Tensor")
             .def("shape", &Tensor::getShape)
@@ -61,8 +47,6 @@ void init_tensor_module(py::module_ &m) {
                 stream << self << std::endl;
                 return stream.str();
             })
-            .def("forward", [](const Tensor &self) { self.forward(); })
-            .def("backward", [](const Tensor &self) { self.backward(); })
             .def("is_contiguous", [](Tensor &self) { return self.isContiguous(); })
             .def("broadcast_to", [](Tensor &self, const Shape &shape) {
                 return self.broadcastTo(shape);
@@ -357,10 +341,10 @@ void init_tensor_module(py::module_ &m) {
             .def("min", [](Tensor &self) {
                 return self.min(-1);
             })
-            .def("forward", [](const Tensor &self) {
+            .def("forward", [](Tensor &self) {
                 self.forward();
             })
-            .def("backward", [](const Tensor &self) {
+            .def("backward", [](Tensor &self) {
                 self.backward();
             });
 }
