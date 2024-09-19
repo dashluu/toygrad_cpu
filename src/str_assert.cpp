@@ -16,4 +16,5 @@ namespace Toygrad::Tensor {
     const std::string AssertMessage::invalidDim = "Invalid dimension";
     const std::string AssertMessage::notBroadcastable = "Tensors are not broadcastable";
     const std::string AssertMessage::notSqueezable = "Tensors are not squeezable";
+    const std::string AssertMessage::backpropFromNull = "Cannot backprop from a tensor without any gradient";
 }

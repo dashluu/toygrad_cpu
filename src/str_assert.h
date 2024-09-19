@@ -18,6 +18,7 @@ namespace Toygrad::Tensor {
         static const std::string invalidDim;
         static const std::string notBroadcastable;
         static const std::string notSqueezable;
+        static const std::string backpropFromNull;
     };
 
     inline bool str_assert(bool assertion, const std::string &message) {
