@@ -10,19 +10,23 @@
 // Computational graph
 namespace Toygrad::Tensor {
     class TensorGraph {
-        std::vector<Tensor *> tensors;
-        Tensor *root = nullptr;
+        std::vector<TensorPtr> tensors;
+        TensorPtr root;
 
         TensorGraph() = default;
 
-        void recurSort(Tensor *tensor, std::unordered_set<size_t> visited);
+        void recurSort(const TensorPtr &tensor, std::unordered_set<size_t> visited);
+
+    public:
+        explicit TensorGraph(const TensorPtr &root, const bool doSort = true): root(root) {
+            if (doSort) {
+                sort();
+            }
+        }
 
         void sort();
 
-    public:
-        explicit TensorGraph(Tensor *root): root(root) {
-            sort();
-        }
+        TensorPtr getRoot() const { return root; }
 
         void forward() const;
 

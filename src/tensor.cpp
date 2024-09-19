@@ -5,6 +5,7 @@
 #include "ops.h"
 #include "tensor_iter.h"
 #include "str_assert.h"
+#include "tensor_graph.h"
 
 namespace Toygrad::Tensor {
     size_t Tensor::idCounter = 0;
@@ -19,7 +20,8 @@ namespace Toygrad::Tensor {
 
     Tensor::~Tensor() {
         std::cout << "Destroyed tensor " << id << "..." << std::endl;
-        for (const auto &op: ops) delete op;
+        delete graph;
+        clearOps();
     }
 
     std::ostream &operator<<(std::ostream &stream, const Tensor &tensor) {
@@ -68,6 +70,14 @@ namespace Toygrad::Tensor {
         } while (flag);
 
         return stream;
+    }
+
+    void Tensor::clearOps() {
+        for (const auto &op: ops) {
+            delete op;
+        }
+
+        ops.clear();
     }
 
     TensorPtr Tensor::index(const std::vector<size_t> &indices) {
@@ -173,6 +183,12 @@ namespace Toygrad::Tensor {
 
     TensorPtr Tensor::alias() {
         return alias(shape);
+    }
+
+    TensorPtr Tensor::diffAlias() {
+        auto outTensor = initTensor(shape, false);
+        outTensor->ops.push_back(new DiffAliasOp(getThis(), outTensor.get()));
+        return outTensor;
     }
 
     TensorPtr Tensor::copy() {
@@ -746,15 +762,19 @@ namespace Toygrad::Tensor {
         return !iter->hasNext();
     }
 
-    void Tensor::forward() const {
-        for (auto &op: ops) {
-            op->forward();
+    void Tensor::forward() {
+        if (graph == nullptr) {
+            graph = new TensorGraph(getThis());
         }
+
+        graph->forward();
     }
 
-    void Tensor::backward() const {
-        for (auto &op: std::ranges::reverse_view(ops)) {
-            op->backward();
+    void Tensor::backward() {
+        if (graph == nullptr) {
+            graph = new TensorGraph(getThis());
         }
+
+        graph->backward();
     }
 }

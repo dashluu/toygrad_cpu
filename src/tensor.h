@@ -12,7 +12,10 @@ namespace Toygrad::Tensor {
         std::vector<Op *> ops = std::vector<Op *>();
         TensorPtr grad;
         std::vector<Tensor *> edges = std::vector<Tensor *>();
+        // TensorGraph is incomplete so raw pointer is used
+        TensorGraph *graph = nullptr;
 
+        friend class NN::Module;
         friend class TensorGraph;
         friend struct Op;
         friend struct UnOp;
@@ -42,6 +45,7 @@ namespace Toygrad::Tensor {
         friend struct SqOp;
         friend struct SqrtOp;
         friend struct AliasOp;
+        friend struct DiffAliasOp;
         friend struct EqOp;
         friend struct NeqOp;
         friend struct LessOp;
@@ -63,6 +67,8 @@ namespace Toygrad::Tensor {
         }
 
         TensorPtr getThis() { return shared_from_this(); }
+
+        void clearOps();
 
         static TensorPtr initTensor(const Shape &shape, bool initStrides = true) {
             return std::make_shared<Tensor>(shape, initStrides);
@@ -172,7 +178,13 @@ namespace Toygrad::Tensor {
         TensorPtr alias();
 
         /**
-         * Creates a deep copy of the tensor using the same underlying memory.
+         * Creates a shallow copy of the tensor that uses the same underlying memory, has the same shape and is differentiable.
+         * @return a shallow copy of the tensor with the same shape is differentiable.
+         */
+        TensorPtr diffAlias();
+
+        /**
+         * Creates a deep copy of the tensor using the same underlying memory but without any graph connection.
          * @return a deep copy of the tensor.
          */
         TensorPtr copy();
@@ -872,11 +884,11 @@ namespace Toygrad::Tensor {
         /**
          * Forward propagation.
          */
-        void forward() const;
+        void forward();
 
         /**
          * Backward propagation.
          */
-        void backward() const;
+        void backward();
     };
 }
