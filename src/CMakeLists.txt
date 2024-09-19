@@ -10,6 +10,7 @@ set(HEADER FILES
         rand_gen.h
         tensor_iter.h
         tensor_graph.h
+        nn.h
 )
 
 set(SRC_FILES
@@ -19,6 +20,7 @@ set(SRC_FILES
         ops.cpp
         tensor_iter.cpp
         tensor_graph.cpp
+        nn.cpp
 )
 
 add_library(toygrad_cpu_lib STATIC ${SRC_FILES} ${HEADER_FILES})

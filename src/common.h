@@ -6,6 +6,10 @@
 
 #include <cmath>
 
+namespace Toygrad::NN {
+    class Module;
+}
+
 namespace Toygrad::Tensor {
     using real = float;
 
