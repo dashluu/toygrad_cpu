@@ -7,18 +7,18 @@
 #include "ops.h"
 
 namespace Toygrad::Tensor {
-    void TensorGraph::recurSort(const TensorPtr &tensor, std::unordered_set<size_t> visited) {
+    void TensorGraph::recurSort(Tensor *tensor, std::unordered_set<size_t> visited) {
         if (!visited.contains(tensor->id)) {
             visited.insert(tensor->id);
 
             for (auto &op: tensor->ops) {
                 if (op->opType == OpType::UN_OP) {
                     auto unOp = dynamic_cast<UnOp *>(op);
-                    recurSort(unOp->operand, visited);
+                    recurSort(unOp->operand.get(), visited);
                 } else if (op->opType == OpType::BIN_OP) {
                     auto binOp = dynamic_cast<BinOp *>(op);
-                    recurSort(binOp->lhs, visited);
-                    recurSort(binOp->rhs, visited);
+                    recurSort(binOp->lhs.get(), visited);
+                    recurSort(binOp->rhs.get(), visited);
                 }
             }
 

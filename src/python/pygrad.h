@@ -11,3 +11,4 @@ namespace py = pybind11;
 void init_vec_module(py::module_ &);
 void init_shape_module(py::module_ &);
 void init_tensor_module(py::module_ &);
+void init_nn_module(py::module &);

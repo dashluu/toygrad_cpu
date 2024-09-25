@@ -1,10 +1,9 @@
 #include <iostream>
-
+#include <sstream>
 #include <ranges>
 #include "tensor.h"
 #include "ops.h"
 #include "tensor_iter.h"
-#include "assert/str_assert.h"
 #include "tensor_graph.h"
 
 namespace Toygrad::Tensor {
@@ -19,7 +18,7 @@ namespace Toygrad::Tensor {
     }
 
     Tensor::~Tensor() {
-        std::cout << "Destroyed tensor " << id << "..." << std::endl;
+        // std::cout << "Destroyed tensor " << id << "..." << std::endl;
         delete graph;
         clearOps();
     }
@@ -73,20 +72,27 @@ namespace Toygrad::Tensor {
     }
 
     void Tensor::clearOps() {
-        for (const auto &op: ops) {
+        for (auto &op: ops) {
             delete op;
         }
 
         ops.clear();
     }
 
-    TensorPtr Tensor::index(const std::vector<size_t> &indices) {
+    void Tensor::realizeOp(Op *op, bool lazy) {
+        if (!lazy) {
+            op->forward();
+            delete op;
+        }
+    }
+
+    TensorPtr Tensor::index(const std::vector<size_t> &indices, bool lazy, TensorPtr outTensor) {
         // Multidimensional tensor
-        assert(str_assert(shape.getNumDims() >= indices.size(), AssertMessage::indexMultidimsOnly));
+        assert(Error::str_assert(shape.getNumDims() >= indices.size(), Error::Message::indexMultidimsOnly));
 
         // Index must stay within bounds
         for (size_t i = 0; i < indices.size(); i++) {
-            assert(str_assert(indices[i] < shape[i], AssertMessage::indexOutOfBounds));
+            assert(Error::str_assert(indices[i] < shape[i], Error::Message::indexOutOfBounds));
         }
 
         auto outShape = shape;
@@ -102,11 +108,11 @@ namespace Toygrad::Tensor {
             ranges.push_back({0, shape[i], 1});
         }
 
-        auto outTensor = alias(outShape);
-        return outTensor->index(ranges);
+        outTensor = alias(outShape, lazy, nullptr);
+        return outTensor->index(ranges, lazy, outTensor);
     }
 
-    TensorPtr Tensor::index(const std::vector<Range> &ranges) {
+    TensorPtr Tensor::index(const std::vector<Range> &ranges, bool lazy, TensorPtr outTensor) {
         Shape outShape;
         outShape.offset = shape.offset;
 
@@ -120,7 +126,7 @@ namespace Toygrad::Tensor {
             outShape.strides.push_back(shape.strides[i] * ranges[i].step);
         }
 
-        return alias(outShape);
+        return alias(outShape, lazy, std::move(outTensor));
     }
 
     bool Tensor::isContiguous() const {
@@ -147,12 +153,12 @@ namespace Toygrad::Tensor {
         return true;
     }
 
-    TensorPtr Tensor::broadcastTo(const Shape &target) {
+    TensorPtr Tensor::broadcastTo(const Shape &target, bool lazy, TensorPtr outTensor) {
         if (shape == target) {
             return getThis();
         }
 
-        assert(str_assert(isBroadcastableTo(target), AssertMessage::notBroadcastable));
+        assert(Error::str_assert(isBroadcastableTo(target), Error::Message::notBroadcastable(shape, target)));
         Shape outShape;
         outShape.offset = shape.offset;
         outShape.view = shape.view;
@@ -172,68 +178,46 @@ namespace Toygrad::Tensor {
             }
         }
 
-        return alias(outShape);
+        return alias(outShape, lazy, std::move(outTensor));
     }
 
-    TensorPtr Tensor::alias(const Shape &target) {
-        auto outTensor = initTensor(target, false);
-        outTensor->ops.push_back(new AliasOp(getThis(), outTensor.get()));
+    TensorPtr Tensor::alias(const Shape &target, bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(target, false, outTensor);
+        auto op = new AliasOp(getThis(), outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::alias() {
-        return alias(shape);
-    }
-
-    TensorPtr Tensor::diffAlias() {
-        auto outTensor = initTensor(shape, false);
-        outTensor->ops.push_back(new DiffAliasOp(getThis(), outTensor.get()));
+    TensorPtr Tensor::diffAlias(bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, false, outTensor);
+        auto op = new DiffAliasOp(getThis(), outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::copy() {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new CopyOp(getThis(), outTensor.get()));
+    TensorPtr Tensor::copy(bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new CopyOp(getThis(), outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    bool Tensor::isSqueezable(int64_t dim) const {
-        if (!isDimValid(dim)) {
-            return false;
-        }
-
-        if (dim != -1) {
-            return shape.view[dim] == 1 ? shape.getNumDims() > 1 : true;
-        }
-
-        size_t dimsToSqueeze = 0;
-
-        for (auto shapeIter = shape.cbegin(); shapeIter != shape.cend(); ++shapeIter) {
-            if (*shapeIter == 1) {
-                dimsToSqueeze++;
-            }
-        }
-
-        return shape.getNumDims() > dimsToSqueeze;
-    }
-
-    TensorPtr Tensor::squeeze(int64_t dim) {
+    TensorPtr Tensor::squeeze(int64_t dim, bool lazy, TensorPtr outTensor) {
         Shape outShape;
 
         if (dim != -1) {
-            assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
+            assert(Error::str_assert(isDimValid(dim), Error::Message::invalidDim(dim, shape)));
             outShape = shape;
 
-            if (outShape[dim] == 1) {
+            if (outShape[dim] == 1 && outShape.getNumDims() > 1) {
                 outShape.remove(dim);
             }
         } else {
-            assert(str_assert(isSqueezable(dim), AssertMessage::notSqueezable));
             outShape = shape;
             int i = 0;
 
             while (i < outShape.getNumDims()) {
-                if (outShape[i] == 1) {
+                if (outShape[i] == 1 && outShape.getNumDims() > 1) {
                     outShape.remove(i);
                 } else {
                     i++;
@@ -241,11 +225,11 @@ namespace Toygrad::Tensor {
             }
         }
 
-        return alias(outShape);
+        return alias(outShape, lazy, std::move(outTensor));
     }
 
-    TensorPtr Tensor::unsqueeze(int64_t dim) {
-        assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
+    TensorPtr Tensor::unsqueeze(int64_t dim, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(isDimValid(dim), Error::Message::invalidDim(dim, shape)));
         Shape outShape = shape;
 
         if (dim == -1) {
@@ -257,19 +241,11 @@ namespace Toygrad::Tensor {
             outShape.strides.insert(outShape.strides.begin() + dim, stride);
         }
 
-        return alias(outShape);
+        return alias(outShape, lazy, std::move(outTensor));
     }
 
-    TensorPtr Tensor::at(size_t idx) {
-        return index({idx});
-    }
-
-    TensorPtr Tensor::at(const std::vector<size_t> &indices) {
-        return index(indices);
-    }
-
-    TensorPtr Tensor::at(const std::vector<Range> &ranges) {
-        assert(str_assert(shape.getNumDims() >= ranges.size(), AssertMessage::indexMultidimsOnly));
+    TensorPtr Tensor::at(const std::vector<Range> &ranges, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(shape.getNumDims() >= ranges.size(), Error::Message::indexMultidimsOnly));
         std::vector<Range> newRanges = ranges;
 
         // Turn invalid ranges into valid ones
@@ -282,156 +258,160 @@ namespace Toygrad::Tensor {
             }
         }
 
-        return index(newRanges);
+        return index(newRanges, lazy, std::move(outTensor));
     }
 
-    TensorPtr Tensor::arange(const Shape &shape, real start, real step) {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new ArangeOp(outTensor.get(), start, step));
+    TensorPtr Tensor::arange(const Shape &shape, real start, real step, bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new ArangeOp(outTensor.get(), start, step, lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::randint(const Shape &shape, int64_t min, int64_t max) {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new RandintOp(outTensor.get(), min, max));
+    TensorPtr Tensor::randint(const Shape &shape, int64_t min, int64_t max, bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new RandintOp(outTensor.get(), min, max, lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::randn(const Shape &shape) {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new RandnOp(outTensor.get()));
+    TensorPtr Tensor::randn(const Shape &shape, bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new RandnOp(outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::fromConst(const Shape &shape, real c) {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new ConstOp(outTensor.get(), c));
+    TensorPtr Tensor::fromConst(const Shape &shape, real c, bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new ConstOp(outTensor.get(), c, lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::fromArr(const Shape &shape, const real *data) {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new FromArrOp(outTensor.get(), data));
+    TensorPtr Tensor::fromArr(const Shape &shape, const real *data, bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new FromArrOp(outTensor.get(), data, lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
     TensorPtr Tensor::operator[](size_t idx) {
-        auto outTensor = at(idx);
+        auto outTensor = at(idx, true, nullptr);
         return outTensor;
     }
 
-    TensorPtr Tensor::add(Tensor &rhs) {
-        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs.broadcastTo(shape);
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new AddOp(getThis(), broadcastedRhs, outTensor.get()));
+    TensorPtr Tensor::add(Tensor &rhs, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(rhs.isBroadcastableTo(shape),
+            Error::Message::notBroadcastable(rhs.shape, shape)));
+        auto broadcastedRhs = rhs.broadcastTo(shape, lazy, nullptr);
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new AddOp(getThis(), broadcastedRhs, outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::add(real c) {
-        return add(fromConst(shape, c));
-    }
-
-    TensorPtr Tensor::sub(Tensor &rhs) {
-        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs.broadcastTo(shape);
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new SubOp(getThis(), broadcastedRhs, outTensor.get()));
+    TensorPtr Tensor::sub(Tensor &rhs, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(rhs.isBroadcastableTo(shape),
+            Error::Message::notBroadcastable(rhs.shape, shape)));
+        auto broadcastedRhs = rhs.broadcastTo(shape, lazy, nullptr);
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new SubOp(getThis(), broadcastedRhs, outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::sub(real c) {
-        return sub(fromConst(shape, c));
-    }
-
-    TensorPtr Tensor::mul(Tensor &rhs) {
-        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs.broadcastTo(shape);
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new MulOp(getThis(), broadcastedRhs, outTensor.get()));
+    TensorPtr Tensor::mul(Tensor &rhs, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(rhs.isBroadcastableTo(shape),
+            Error::Message::notBroadcastable(rhs.shape, shape)));
+        auto broadcastedRhs = rhs.broadcastTo(shape, lazy, nullptr);
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new MulOp(getThis(), broadcastedRhs, outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::mul(real c) {
-        return mul(fromConst(shape, c));
-    }
-
-    TensorPtr Tensor::div(Tensor &rhs) {
-        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs.broadcastTo(shape);
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new DivOp(getThis(), broadcastedRhs, outTensor.get()));
+    TensorPtr Tensor::div(Tensor &rhs, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(rhs.isBroadcastableTo(shape),
+            Error::Message::notBroadcastable(rhs.shape, shape)));
+        auto broadcastedRhs = rhs.broadcastTo(shape, lazy, nullptr);
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new DivOp(getThis(), broadcastedRhs, outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::div(real c) {
-        return div(fromConst(shape, c));
-    }
-
-    TensorPtr Tensor::pow(real c) {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new PowOp(getThis(), outTensor.get(), c));
+    TensorPtr Tensor::pow(real c, bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new PowOp(getThis(), outTensor.get(), c, lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::log() {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new LogOp(getThis(), outTensor.get()));
+    TensorPtr Tensor::log(bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new LogOp(getThis(), outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::sin() {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new SinOp(getThis(), outTensor.get()));
+    TensorPtr Tensor::sin(bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new SinOp(getThis(), outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::cos() {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new CosOp(getThis(), outTensor.get()));
+    TensorPtr Tensor::cos(bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new CosOp(getThis(), outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::exp() {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new ExpOp(getThis(), outTensor.get()));
+    TensorPtr Tensor::exp(bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new ExpOp(getThis(), outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::recip(real c) {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new RecipOp(getThis(), outTensor.get(), c));
+    TensorPtr Tensor::recip(real c, bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new RecipOp(getThis(), outTensor.get(), c, lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::sq() {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new SqOp(getThis(), outTensor.get()));
+    TensorPtr Tensor::sq(bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new SqOp(getThis(), outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::sqrt() {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new SqrtOp(getThis(), outTensor.get()));
+    TensorPtr Tensor::sqrt(bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new SqrtOp(getThis(), outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::neg() {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new NegOp(getThis(), outTensor.get()));
+    TensorPtr Tensor::neg(bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new NegOp(getThis(), outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::eq(Tensor &rhs) {
-        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs.broadcastTo(shape);
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new EqOp(getThis(), broadcastedRhs, outTensor.get()));
+    TensorPtr Tensor::eq(Tensor &rhs, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(rhs.isBroadcastableTo(shape),
+            Error::Message::notBroadcastable(rhs.shape, shape)));
+        auto broadcastedRhs = rhs.broadcastTo(shape, lazy, nullptr);
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new EqOp(getThis(), broadcastedRhs, outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
-    }
-
-    TensorPtr Tensor::eq(real c) {
-        return eq(fromConst(shape, c));
     }
 
     bool Tensor::operator==(const Tensor &rhs) const {
@@ -452,136 +432,119 @@ namespace Toygrad::Tensor {
         return true;
     }
 
-    TensorPtr Tensor::neq(Tensor &rhs) {
-        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs.broadcastTo(shape);
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new NeqOp(getThis(), broadcastedRhs, outTensor.get()));
+    TensorPtr Tensor::neq(Tensor &rhs, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(rhs.isBroadcastableTo(shape),
+            Error::Message::notBroadcastable(rhs.shape, shape)));
+        auto broadcastedRhs = rhs.broadcastTo(shape, lazy, nullptr);
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new NeqOp(getThis(), broadcastedRhs, outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
-    }
-
-    TensorPtr Tensor::neq(real c) {
-        return neq(fromConst(shape, c));
     }
 
     bool Tensor::operator!=(const Tensor &rhs) const {
         return !(*this == rhs);
     }
 
-    TensorPtr Tensor::lt(Tensor &rhs) {
-        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs.broadcastTo(shape);
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new LessOp(getThis(), broadcastedRhs, outTensor.get()));
+    TensorPtr Tensor::lt(Tensor &rhs, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(rhs.isBroadcastableTo(shape),
+            Error::Message::notBroadcastable(rhs.shape, shape)));
+        auto broadcastedRhs = rhs.broadcastTo(shape, lazy, nullptr);
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new LessOp(getThis(), broadcastedRhs, outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::lt(real c) {
-        return lt(fromConst(shape, c));
-    }
-
-    TensorPtr Tensor::gt(Tensor &rhs) {
-        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs.broadcastTo(shape);
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new GreaterOp(getThis(), broadcastedRhs, outTensor.get()));
+    TensorPtr Tensor::gt(Tensor &rhs, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(rhs.isBroadcastableTo(shape),
+            Error::Message::notBroadcastable(rhs.shape, shape)));
+        auto broadcastedRhs = rhs.broadcastTo(shape, lazy, nullptr);
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new GreaterOp(getThis(), broadcastedRhs, outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::gt(real c) {
-        return gt(fromConst(shape, c));
-    }
-
-    TensorPtr Tensor::leq(Tensor &rhs) {
-        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs.broadcastTo(shape);
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new LeqOp(getThis(), broadcastedRhs, outTensor.get()));
+    TensorPtr Tensor::leq(Tensor &rhs, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(rhs.isBroadcastableTo(shape),
+            Error::Message::notBroadcastable(rhs.shape, shape)));
+        auto broadcastedRhs = rhs.broadcastTo(shape, lazy, nullptr);
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new LeqOp(getThis(), broadcastedRhs, outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::leq(real c) {
-        return leq(fromConst(shape, c));
-    }
-
-    TensorPtr Tensor::geq(Tensor &rhs) {
-        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs.broadcastTo(shape);
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new GeqOp(getThis(), broadcastedRhs, outTensor.get()));
+    TensorPtr Tensor::geq(Tensor &rhs, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(rhs.isBroadcastableTo(shape),
+            Error::Message::notBroadcastable(rhs.shape, shape)));
+        auto broadcastedRhs = rhs.broadcastTo(shape, lazy, nullptr);
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new GeqOp(getThis(), broadcastedRhs, outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::geq(real c) {
-        return geq(fromConst(shape, c));
-    }
-
-    TensorPtr Tensor::addAssign(Tensor &rhs) {
-        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs.broadcastTo(shape);
-        ops.push_back(new AddAssignOp(broadcastedRhs, this));
+    TensorPtr Tensor::addAssign(Tensor &rhs, bool lazy) {
+        assert(Error::str_assert(rhs.isBroadcastableTo(shape),
+            Error::Message::notBroadcastable(rhs.shape, shape)));
+        auto broadcastedRhs = rhs.broadcastTo(shape, lazy, nullptr);
+        auto op = new AddAssignOp(broadcastedRhs, this, lazy);
+        realizeOp(op, lazy);
         return getThis();
     }
 
-    TensorPtr Tensor::addAssign(real c) {
-        return addAssign(fromConst(shape, c));
-    }
-
-    TensorPtr Tensor::subAssign(Tensor &rhs) {
-        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs.broadcastTo(shape);
-        ops.push_back(new SubAssignOp(broadcastedRhs, this));
+    TensorPtr Tensor::subAssign(Tensor &rhs, bool lazy) {
+        assert(Error::str_assert(rhs.isBroadcastableTo(shape),
+            Error::Message::notBroadcastable(rhs.shape, shape)));
+        auto broadcastedRhs = rhs.broadcastTo(shape, lazy, nullptr);
+        auto op = new SubAssignOp(broadcastedRhs, this, lazy);
+        realizeOp(op, lazy);
         return getThis();
     }
 
-    TensorPtr Tensor::subAssign(real c) {
-        return subAssign(fromConst(shape, c));
-    }
-
-    TensorPtr Tensor::mulAssign(Tensor &rhs) {
-        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs.broadcastTo(shape);
-        ops.push_back(new MulAssignOp(broadcastedRhs, this));
+    TensorPtr Tensor::mulAssign(Tensor &rhs, bool lazy) {
+        assert(Error::str_assert(rhs.isBroadcastableTo(shape),
+            Error::Message::notBroadcastable(rhs.shape, shape)));
+        auto broadcastedRhs = rhs.broadcastTo(shape, lazy, nullptr);
+        auto op = new MulAssignOp(broadcastedRhs, this, lazy);
+        realizeOp(op, lazy);
         return getThis();
     }
 
-    TensorPtr Tensor::mulAssign(real c) {
-        return mulAssign(fromConst(shape, c));
-    }
-
-    TensorPtr Tensor::divAssign(Tensor &rhs) {
-        assert(str_assert(rhs.isBroadcastableTo(shape), AssertMessage::notBroadcastable));
-        auto broadcastedRhs = rhs.broadcastTo(shape);
-        ops.push_back(new DivAssignOp(broadcastedRhs, this));
+    TensorPtr Tensor::divAssign(Tensor &rhs, bool lazy) {
+        assert(Error::str_assert(rhs.isBroadcastableTo(shape),
+            Error::Message::notBroadcastable(rhs.shape, shape)));
+        auto broadcastedRhs = rhs.broadcastTo(shape, lazy, nullptr);
+        auto op = new DivAssignOp(broadcastedRhs, this, lazy);
+        realizeOp(op, lazy);
         return getThis();
     }
 
-    TensorPtr Tensor::divAssign(real c) {
-        return divAssign(fromConst(shape, c));
-    }
-
-    TensorPtr Tensor::relu() {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new ReluOp(getThis(), outTensor.get()));
+    TensorPtr Tensor::relu(bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new ReluOp(getThis(), outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::sigmoid() {
-        auto outTensor = initTensor(shape);
-        outTensor->ops.push_back(new SigmoidOp(getThis(), outTensor.get()));
+    TensorPtr Tensor::sigmoid(bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(shape, true, outTensor);
+        auto op = new SigmoidOp(getThis(), outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::softmax(int64_t dim) {
-        assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
-        TensorPtr outTensor;
+    TensorPtr Tensor::softmax(int64_t dim, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(isDimValid(dim), Error::Message::invalidDim(dim, shape)));
 
         if (dim == -1) {
-            auto maxTensor = max();
-            auto subTensor = sub(maxTensor);
-            auto expTensor = subTensor->exp();
-            auto sumTensor = expTensor->sum();
-            outTensor = expTensor->div(sumTensor);
+            auto maxTensor = max(-1, lazy, nullptr);
+            auto subTensor = sub(maxTensor, lazy, nullptr);
+            auto expTensor = subTensor->exp(lazy, nullptr);
+            auto sumTensor = expTensor->sum(-1, lazy, nullptr);
+            outTensor = expTensor->div(sumTensor, lazy, outTensor);
         } else {
             std::vector<size_t> shapePerm(shape.getNumDims());
             std::iota(shapePerm.begin(), shapePerm.end(), 0);
@@ -589,72 +552,69 @@ namespace Toygrad::Tensor {
             shapePerm.push_back(dim);
             // Permutes operand
             Shape permShape = shape.perm(shapePerm);
-            auto permTensor = perm(permShape);
-            // std::cout << std::endl << "Perm:" << std::endl << *permTensor << std::endl;
+            auto permTensor = perm(permShape, lazy, nullptr);
             // Compute softmax
-            auto maxTensor = permTensor->max(shape.getNumDims() - 1)->unsqueeze();
-            // std::cout << std::endl << "Max:" << std::endl << *maxTensor << std::endl;
-            auto subTensor = permTensor->sub(maxTensor);
-            // std::cout << std::endl << "Sub:" << std::endl << *subTensor << std::endl;
-            auto expTensor = subTensor->exp();
-            // std::cout << std::endl << "Exp:" << std::endl << *expTensor << std::endl;
-            auto sumTensor = expTensor->sum(shape.getNumDims() - 1)->unsqueeze();
-            // std::cout << std::endl << "Sum:" << std::endl << *sumTensor << std::endl;
-            auto softmaxTensor = expTensor->div(sumTensor);
-            // std::cout << std::endl << "Softmax:" << std::endl << *softmaxTensor << std::endl;
+            auto maxTensor = permTensor->max(shape.getNumDims() - 1, lazy, nullptr)->unsqueeze(-1, lazy, nullptr);
+            auto subTensor = permTensor->sub(maxTensor, lazy, nullptr);
+            auto expTensor = subTensor->exp(lazy, nullptr);
+            auto sumTensor = expTensor->sum(shape.getNumDims() - 1, lazy, nullptr)->unsqueeze(-1, lazy, nullptr);
+            auto softmaxTensor = expTensor->div(sumTensor, lazy, nullptr);
             // Permute softmax
             std::iota(shapePerm.begin(), shapePerm.end(), 0);
             size_t lastDim = shapePerm[shapePerm.size() - 1];
             shapePerm.erase(shapePerm.end() - 1);
             shapePerm.insert(shapePerm.begin() + dim, lastDim);
-            outTensor = softmaxTensor->perm(shapePerm);
+            outTensor = softmaxTensor->perm(shapePerm, lazy, outTensor);
         }
 
         return outTensor;
     }
 
-    TensorPtr Tensor::matmul(Tensor &rhs) {
-        assert(str_assert(shape.getNumDims() == rhs.shape.getNumDims(), AssertMessage::shapesMismatched));
-        assert(str_assert(shape.getNumDims() >= 2, AssertMessage::matmulOnLessThan2d));
-        assert(str_assert(std::equal(shape.begin(), shape.end() - 2,
-                rhs.shape.begin(), rhs.shape.end() - 2),
-            AssertMessage::shapesMismatched));
+    TensorPtr Tensor::matmul(Tensor &rhs, bool lazy, TensorPtr outTensor) {
+        const auto message = Error::Message::shapesMismatched("matmul", shape, rhs.shape);
+        assert(Error::str_assert(shape.getNumDims() == rhs.shape.getNumDims(), message));
+        assert(Error::str_assert(shape.getNumDims() >= 2, Error::Message::matmulOnLessThan2d));
+        assert(Error::str_assert(std::equal(shape.begin(), shape.end() - 2,
+            rhs.shape.begin(), rhs.shape.end() - 2), message));
         size_t numDims = shape.getNumDims();
-        assert(str_assert(shape[numDims - 1] == rhs.shape[numDims - 2], AssertMessage::shapesMismatched));
+        assert(Error::str_assert(shape[numDims - 1] == rhs.shape[numDims - 2], message));
         Shape outShape = shape;
         // Shape of ...x H1 x W1 matmul ...x W1 x H2 == ...x H1 x H2
         outShape[numDims - 1] = rhs.shape[numDims - 1];
         // Permutes rhs's last two dimensions
-        auto tranposedRhs = rhs.T(numDims - 2);
+        auto tranposedRhs = rhs.T(numDims - 2, lazy);
         // Do matrix multiplication on the last 2 dimensions
-        auto outTensor = initTensor(outShape);
-        outTensor->ops.push_back(new MatmulOp(getThis(), tranposedRhs, outTensor.get()));
+        outTensor = initTensor(outShape, true, outTensor);
+        auto op = new MatmulOp(getThis(), tranposedRhs, outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::reshape(const Shape &target) {
-        assert(str_assert(target.getSize() == shape.getSize(), AssertMessage::shapesMismatched));
-        TensorPtr outTensor;
+    TensorPtr Tensor::reshape(const Shape &target, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(target.getSize() == shape.getSize(),
+            Error::Message::shapesMismatched("matmul", shape, target)));
 
         if (isContiguous()) {
-            outTensor = initTensor(target, false);
+            outTensor = initTensor(target, false, outTensor);
             outTensor->shape.offset = shape.offset;
-            outTensor->ops.push_back(new AliasOp(getThis(), outTensor.get()));
+            auto op = new AliasOp(getThis(), outTensor.get(), lazy);
+            realizeOp(op, lazy);
         } else {
-            outTensor = initTensor(target);
-            outTensor->ops.push_back(new CopyOp(getThis(), outTensor.get()));
+            outTensor = initTensor(target, true, outTensor);
+            auto op = new CopyOp(getThis(), outTensor.get(), lazy);
+            realizeOp(op, lazy);
         }
 
         return outTensor;
     }
 
-    TensorPtr Tensor::sum(int64_t dim) {
-        assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
-        TensorPtr outTensor;
+    TensorPtr Tensor::sum(int64_t dim, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(isDimValid(dim), Error::Message::invalidDim(dim, shape)));
 
         if (dim == -1) {
-            outTensor = initTensor(Shape({1}));
-            outTensor->ops.push_back(new SumOp(getThis(), outTensor.get(), dim));
+            outTensor = initTensor(Shape({1}), true, outTensor);
+            auto op = new SumOp(getThis(), outTensor.get(), dim, lazy);
+            realizeOp(op, lazy);
         } else {
             Shape outShape = shape;
             // Remove the dimension in which the sum is computed in from the output shape
@@ -665,21 +625,22 @@ namespace Toygrad::Tensor {
             shapePerm.erase(shapePerm.begin() + dim);
             shapePerm.push_back(dim);
             // Compute sum
-            auto permTensor = perm(shapePerm);
-            outTensor = initTensor(outShape);
-            outTensor->ops.push_back(new SumOp(permTensor, outTensor.get(), dim));
+            auto permTensor = perm(shapePerm, lazy, nullptr);
+            outTensor = initTensor(outShape, true, outTensor);
+            auto op = new SumOp(permTensor, outTensor.get(), dim, lazy);
+            realizeOp(op, lazy);
         }
 
         return outTensor;
     }
 
-    TensorPtr Tensor::max(int64_t dim) {
-        assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
-        TensorPtr outTensor;
+    TensorPtr Tensor::max(int64_t dim, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(isDimValid(dim), Error::Message::invalidDim(dim, shape)));
 
         if (dim == -1) {
-            outTensor = initTensor(Shape({1}));
-            outTensor->ops.push_back(new MaxOp(getThis(), outTensor.get(), dim));
+            outTensor = initTensor(Shape({1}), true, outTensor);
+            auto op = new MaxOp(getThis(), outTensor.get(), dim, lazy);
+            realizeOp(op, lazy);
         } else {
             Shape outShape = shape;
             // Remove the dimension in which the max is computed in from the output shape
@@ -690,21 +651,22 @@ namespace Toygrad::Tensor {
             shapePerm.erase(shapePerm.begin() + dim);
             shapePerm.push_back(dim);
             // Compute max
-            auto permTensor = perm(shapePerm);
-            outTensor = initTensor(outShape);
-            outTensor->ops.push_back(new MaxOp(permTensor, outTensor.get(), dim));
+            auto permTensor = perm(shapePerm, lazy, nullptr);
+            outTensor = initTensor(outShape, true, outTensor);
+            auto op = new MaxOp(permTensor, outTensor.get(), dim, lazy);
+            realizeOp(op, lazy);
         }
 
         return outTensor;
     }
 
-    TensorPtr Tensor::min(int64_t dim) {
-        assert(str_assert(isDimValid(dim), AssertMessage::invalidDim));
-        TensorPtr outTensor;
+    TensorPtr Tensor::min(int64_t dim, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(isDimValid(dim), Error::Message::invalidDim(dim, shape)));
 
         if (dim == -1) {
-            outTensor = initTensor(Shape({1}));
-            outTensor->ops.push_back(new MinOp(getThis(), outTensor.get(), dim));
+            outTensor = initTensor(Shape({1}), true, outTensor);
+            auto op = new MinOp(getThis(), outTensor.get(), dim, lazy);
+            realizeOp(op, lazy);
         } else {
             Shape outShape = shape;
             // Remove the dimension in which the min is computed in from the output shape
@@ -715,45 +677,48 @@ namespace Toygrad::Tensor {
             shapePerm.erase(shapePerm.begin() + dim);
             shapePerm.push_back(dim);
             // Compute min
-            auto permTensor = perm(shapePerm);
-            outTensor = initTensor(outShape);
-            outTensor->ops.push_back(new MinOp(permTensor, outTensor.get(), dim));
+            auto permTensor = perm(shapePerm, lazy, nullptr);
+            outTensor = initTensor(outShape, true, outTensor);
+            auto op = new MinOp(permTensor, outTensor.get(), dim, lazy);
+            realizeOp(op, lazy);
         }
 
         return outTensor;
     }
 
-    TensorPtr Tensor::perm(const std::vector<size_t> &shapePerm) {
-        assert(str_assert(shapePerm.size() == shape.getNumDims(), AssertMessage::invalidShapePerm));
+    TensorPtr Tensor::perm(const std::vector<size_t> &shapePerm, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(shapePerm.size() == shape.getNumDims(), Error::Message::invalidShapePerm));
         std::vector<bool> flags(shape.getNumDims());
 
         for (size_t i: shapePerm) {
-            assert(str_assert(i < shape.getNumDims(), AssertMessage::invalidShapePerm));
+            assert(Error::str_assert(i < shape.getNumDims(), Error::Message::invalidShapePerm));
             flags[i] = true;
         }
 
         for (bool i: flags) {
-            assert(str_assert(i, AssertMessage::invalidShapePerm));
+            assert(Error::str_assert(i, Error::Message::invalidShapePerm));
         }
 
         Shape permShape = shape.perm(shapePerm);
-        auto outTensor = initTensor(permShape, false);
-        outTensor->ops.push_back(new PermOp(getThis(), outTensor.get()));
+        outTensor = initTensor(permShape, false, outTensor);
+        auto op = new PermOp(getThis(), outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::perm(const Shape &target) {
-        auto outTensor = initTensor(target, false);
-        outTensor->ops.push_back(new PermOp(getThis(), outTensor.get()));
+    TensorPtr Tensor::perm(const Shape &target, bool lazy, TensorPtr outTensor) {
+        outTensor = initTensor(target, false, outTensor);
+        auto op = new PermOp(getThis(), outTensor.get(), lazy);
+        realizeOp(op, lazy);
         return outTensor;
     }
 
-    TensorPtr Tensor::T(size_t startDim) {
-        assert(str_assert(startDim < shape.getNumDims(), AssertMessage::invalidDim));
+    TensorPtr Tensor::T(size_t startDim, bool lazy, TensorPtr outTensor) {
+        assert(Error::str_assert(startDim < shape.getNumDims(), Error::Message::invalidDim(startDim, shape)));
         std::vector<size_t> shapePerm(shape.getNumDims());
         std::iota(shapePerm.begin(), shapePerm.end(), 0);
         std::reverse(shapePerm.begin() + startDim, shapePerm.end());
-        return perm(shapePerm);
+        return perm(shapePerm, lazy, std::move(outTensor));
     }
 
     bool Tensor::isEmpty() const {
@@ -764,17 +729,14 @@ namespace Toygrad::Tensor {
 
     void Tensor::forward() {
         if (graph == nullptr) {
-            graph = new TensorGraph(getThis());
+            graph = new TensorGraph(this);
         }
 
         graph->forward();
     }
 
     void Tensor::backward() {
-        if (graph == nullptr) {
-            graph = new TensorGraph(getThis());
-        }
-
+        assert(Error::str_assert(graph != nullptr, Error::Message::tensorGraphUninitialized));
         graph->backward();
     }
 }

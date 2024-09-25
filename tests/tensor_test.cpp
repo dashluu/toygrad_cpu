@@ -75,9 +75,8 @@ TEST(TensorTestFixture, sumTensor1) {
     Shape s1({1, 2, 12});
     auto t1 = Tensor::arange(s1, 0, 1);
     auto t2 = t1->sum();
-    auto graph = std::make_unique<TensorGraph>(t2);
-    graph->forward();
-    graph->backward();
+    t2->forward();
+    t2->backward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     real data[] = {276};
     auto x2 = Tensor::fromArr({1}, data);
@@ -93,9 +92,8 @@ TEST(TensorTestFixture, sumTensor2) {
     auto t1 = Tensor::arange({2, 3, 4}, 0, 1);
     auto t2 = t1->sum(1);
     auto t3 = t2->sum();
-    auto graph = std::make_unique<TensorGraph>(t3);
-    graph->forward();
-    graph->backward();
+    t3->forward();
+    t3->backward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     real data[] = {12, 15, 18, 21, 48, 51, 54, 57};
     auto x2 = Tensor::fromArr({2, 4}, data);
@@ -121,9 +119,8 @@ TEST(TensorTestFixture, sumTensor3) {
 void maxHelper(const TensorPtr &t1, const TensorPtr &x2, const TensorPtr &g1) {
     auto t2 = t1->max(1);
     auto t3 = t2->sum();
-    auto graph = std::make_unique<TensorGraph>(t3);
-    graph->forward();
-    graph->backward();
+    t3->forward();
+    t3->backward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     x2->forward();
     assertEqTemplate(*t2, *x2);
@@ -252,9 +249,8 @@ TEST(TensorTestFixture, sumTensorGrad1) {
     auto t1 = Tensor::arange(s1, 0, 1);
     auto t2 = t1->sum(1);
     auto t3 = t2->sum();
-    auto graph = std::make_unique<TensorGraph>(t3);
-    graph->forward();
-    graph->backward();
+    t3->forward();
+    t3->backward();
     std::cout << "Original:" << std::endl << *t1 << std::endl;
     auto g1 = Tensor::fromConst(s1, 1.);
     g1->forward();
@@ -397,30 +393,11 @@ TEST(TensorTestFixture, squeeze1) {
     std::vector<size_t> v6 = {3, 4};
     real d6[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
     squeezeHelper(t5, 1, v6, d6);
-}
 
-TEST(TensorTestFixture, squeeze2) {
-    std::cout << std::endl << "Squeeze 2:" << std::endl;
-
-    auto t1 = Tensor::arange({1}, 0);
-    t1->forward();
-    std::cout << "Original:" << std::endl << *t1 << std::endl;
-    ASSERT_EQ(false, t1->isSqueezable());
-
-    auto t2 = Tensor::arange({2, 4, 1}, 0);
-    t2->forward();
-    std::cout << "Original:" << std::endl << *t2 << std::endl;
-    ASSERT_EQ(true, t2->isSqueezable(2));
-
-    auto t3 = Tensor::arange({1, 1}, 0);
-    t3->forward();
-    std::cout << "Original:" << std::endl << *t3 << std::endl;
-    ASSERT_EQ(false, t3->isSqueezable());
-
-    auto t4 = Tensor::arange({1, 1}, 0);
-    t4->forward();
-    std::cout << "Original:" << std::endl << *t4 << std::endl;
-    ASSERT_EQ(true, t3->isSqueezable(0));
+    auto t6 = Tensor::arange({1}, 7);
+    std::vector<size_t> v7 = {1};
+    real d7[] = {7};
+    squeezeHelper(t6, -1, v7, d7);
 }
 
 void unsqueezeHelper(const TensorPtr &t1, int64_t dim, const std::vector<size_t> &v2, real *d2) {
@@ -496,9 +473,8 @@ TEST(TensorTestFixture, matmul3) {
     auto t2 = Tensor::fromArr({2, 4, 2}, d2);
     auto t3 = t1->matmul(t2);
     auto t4 = t3->sum();
-    auto graph = std::make_unique<TensorGraph>(t4);
-    graph->forward();
-    graph->backward();
+    t4->forward();
+    t4->backward();
     real d3[] = {9767., 6821., 11071., 6262., 8721., 3942., 3575., 6177., 10647., 8124., 19869., 14481.};
     auto x3 = Tensor::fromArr({2, 3, 2}, d3);
     x3->forward();

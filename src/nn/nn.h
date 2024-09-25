@@ -7,23 +7,14 @@
 
 namespace Toygrad::NN {
     class Module {
-        Tensor::GraphPtr graph;
         std::vector<Tensor::TensorPtr> input;
+        Tensor::TensorPtr output = nullptr;
 
     public:
         virtual ~Module() = default;
 
-        Tensor::TensorPtr init(const std::vector<Tensor::TensorPtr> &x);
+        Tensor::TensorPtr forward(const std::vector<Tensor::TensorPtr> &x);
 
-        void forward() const {
-            graph->sort();
-            graph->forward();
-        }
-
-        void backward() const {
-            graph->backward();
-        }
-
-        virtual Tensor::TensorPtr forwardFunc(const std::vector<Tensor::TensorPtr> &x) = 0;
+        virtual Tensor::TensorPtr F(const std::vector<Tensor::TensorPtr> &x) = 0;
     };
 }

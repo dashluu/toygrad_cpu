@@ -6,6 +6,7 @@
 #include "common.h"
 
 namespace Toygrad::Tensor {
+    // TODO: fix shape so it can have at least one dimension
     struct Shape {
     private:
         friend class Tensor;
@@ -94,21 +95,21 @@ namespace Toygrad::Tensor {
         }
 
         friend std::ostream &operator<<(std::ostream &stream, const Shape &shape) {
-            stream << "offset: " << shape.offset << ", ";
-            stream << "view: ";
-
-            for (auto v: shape.view) {
-                stream << v << ", ";
-            }
-
-            stream << "strides: ";
-
-            for (auto s: shape.strides) {
-                stream << s << ", ";
-            }
-
-            stream << std::endl;
+            stream << shape.toStr();
             return stream;
+        }
+
+        std::string toStr() const {
+            std::string str = "(";
+            // Shape always has at least one dimension
+            str += std::to_string(view[0]);
+
+            for (size_t i = 1; i < view.size(); i++) {
+                str += ", " + std::to_string(view[i]);
+            }
+
+            str += ")";
+            return str;
         }
 
         Shape &operator=(const Shape &rhs) {

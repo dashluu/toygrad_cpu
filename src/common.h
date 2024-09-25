@@ -20,10 +20,12 @@ namespace Toygrad::Tensor {
     };
 
     class TensorGraph;
+    class TensorDraw;
     class TensorIter;
     class ConstTensorIter;
     class Tensor;
     struct Op;
+    struct LeafOp;
     struct UnOp;
     struct BinOp;
     struct IndexOp;

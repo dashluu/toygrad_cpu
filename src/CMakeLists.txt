@@ -11,6 +11,8 @@ set(HEADER FILES
         tensors/tensor_iter.h
         tensors/tensor_graph.h
         nn/nn.h
+        nn/linear.h
+        tensors/tensor_draw.h
 )
 
 set(SRC_FILES
@@ -21,6 +23,8 @@ set(SRC_FILES
         tensors/tensor_iter.cpp
         tensors/tensor_graph.cpp
         nn/nn.cpp
+        nn/linear.cpp
+        tensors/tensor_draw.cpp
 )
 
 add_library(toygrad_cpu_lib STATIC ${SRC_FILES} ${HEADER_FILES})

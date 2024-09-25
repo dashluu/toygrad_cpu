@@ -12,6 +12,7 @@ PYBIND11_MODULE(toygrad_cpu, m) {
     init_vec_module(m);
     init_shape_module(m);
     init_tensor_module(m);
+    init_tensor_module(m);
 }
 
 void init_vec_module(py::module_ &m) {
@@ -37,6 +38,9 @@ void init_shape_module(py::module_ &m) {
             .def("__getitem__", [](Shape &self, unsigned index) { return self[index]; });
 }
 
+void init_nn_module(py::module &m) {
+}
+
 void init_tensor_module(py::module_ &m) {
     py::class_<Tensor, std::shared_ptr<Tensor> >(m, "Tensor")
             .def("shape", &Tensor::getShape)
@@ -52,22 +56,6 @@ void init_tensor_module(py::module_ &m) {
             })
             .def("broadcast_to", [](Tensor &self, const std::vector<size_t> &view) {
                 return self.broadcastTo(view);
-            })
-            .def("is_squeezable", [](const Tensor &self, int64_t dim) {
-                int64_t numDims = self.getShape().getNumDims();
-
-                if (dim <= -numDims || dim >= numDims) {
-                    throw py::index_error();
-                }
-
-                if (dim >= 0) {
-                    return self.isSqueezable(dim);
-                }
-
-                return self.isSqueezable(numDims + dim);
-            })
-            .def("is_squeezable", [](const Tensor &self) {
-                return self.isSqueezable(-1);
             })
             .def("squeeze", [](Tensor &self, int64_t dim) {
                 int64_t numDims = self.getShape().getNumDims();
