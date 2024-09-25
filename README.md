@@ -19,11 +19,15 @@ for performance. There are still bugs internally so this project is not intended
 * Git
 * Pybind11 2.13.5
 * Python 3.12(see Python versions supported by PyBind11)
+* Graphviz 12.1.1 is used for drawing neural networks
 
 ## :rocket: Quick start
 
-* Insert path to `Python.h` and the include path of Pybind11 in CMAKE. It is best that they are from the same Python
-  environment and using the same interpreter.
+* Add the following paths:
+  * The path to `Python.h`
+  * The include path of Pybind11 in CMAKE(it is best that both are from the same Python
+    environment and using the same interpreter)
+  * The path to Graphviz. For example, `/opt/homebrew/Cellar/graphviz/12.1.1`
 * Build using the following command in the project folder:
 
 ```

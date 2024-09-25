@@ -12,7 +12,7 @@ include_directories(${PYBIND})
 find_package(pybind11 REQUIRED)
 
 # Graphviz
-set(GRAPHVIZ "Your GraphViz path")
+set(GRAPHVIZ "Your Graphviz path")
 include_directories("${GRAPHVIZ}/include")
 link_directories("${GRAPHVIZ}/lib")
 
